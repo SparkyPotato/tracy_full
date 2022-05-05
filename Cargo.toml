@@ -32,7 +32,7 @@ fibers = ["sys/fibers"]
 system-tracing = ["sys/system-tracing"]
 # Enable the capture of context-switch data.
 context-switch-tracing = ["sys/context-switch-tracing"]
-# Enable sampling of call-stacks..
+# Enable sampling of call-stacks.
 sampling = ["sys/sampling"]
 # Enable the capture of machine code data.
 code-transfer = ["sys/code-transfer"]
@@ -53,6 +53,8 @@ ondemand = ["sys/ondemand"]
 rustc_version = "0.4"
 
 [dependencies]
+ctor = "0.1.22"
 sys = { package = "tracy-client-sys", version = "0.17.0", default-features = false }
 
-ctor = "0.1.22"
+[target.'cfg(not(unstable))'.dependencies]
+once_cell = "1.10.0"

@@ -21,11 +21,11 @@ macro_rules! frame {
 		$crate::frame::frame();
 	};
 
-	($name:literal) => {
+	($name:literal $(,)?) => {
 		$crate::frame::named_frame($crate::c_str!($name));
 	};
 
-	(discontinuous $name:literal) => {
+	(discontinuous $name:literal $(,)?) => {
 		let _frame = $crate::frame::discontinuous_frame($crate::c_str!($name));
 	};
 }
@@ -63,7 +63,7 @@ pub fn discontinuous_frame(name: &'static CStr) -> DiscontinuousFrame {
 		DiscontinuousFrame { name }
 	}
 	#[cfg(not(feature = "enable"))]
-	DiscontinuousFrame { name: (), }
+	DiscontinuousFrame { name: () }
 }
 
 pub struct DiscontinuousFrame {

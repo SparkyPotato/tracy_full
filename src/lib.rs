@@ -1,6 +1,10 @@
 #![allow(dead_code)]
+#![allow(incomplete_features)]
 #![allow(unused_variables)]
+#![cfg_attr(feature = "unstable", feature(const_intrinsic_copy))]
+#![cfg_attr(feature = "unstable", feature(const_mut_refs))]
 #![cfg_attr(feature = "unstable", feature(const_type_name))]
+#![cfg_attr(feature = "unstable", feature(generic_const_exprs))]
 
 use std::{error::Error, ffi::CString};
 
@@ -22,6 +26,7 @@ where
 	T: TryInto<CString>,
 	T::Error: Error,
 {
+	#[cfg(feature = "enable")]
 	unsafe {
 		let cstr = name.try_into().expect("name is not a valid string");
 		sys::___tracy_set_thread_name(cstr.as_ptr());
@@ -32,6 +37,6 @@ where
 #[macro_export]
 macro_rules! c_str {
 	($str:literal) => {
-		unsafe { std::ffi::CStr::from_ptr(concat!($str, "\0").as_ptr() as _) }
+		unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!($str, "\0").as_bytes()) }
 	};
 }

@@ -1,12 +1,33 @@
 use std::ffi::CStr;
 
-use sys::___tracy_source_location_data;
-
 use crate::color::Color;
 
 #[macro_export]
 macro_rules! zone {
 	() => {};
+}
+
+pub fn zone(loc: &'static ZoneLocation, active: bool) -> Zone {
+	#[cfg(feature = "enable")]
+	unsafe {
+		Zone {
+			ctx: sys::___tracy_emit_zone_begin(&loc.loc, active as _),
+		}
+	}
+	#[cfg(not(feature = "enable"))]
+	Zone { ctx: () }
+}
+
+#[cfg(feature = "sampling")]
+pub fn zone_sample(loc: &'static ZoneLocation, depth: u32, active: bool) -> Zone {
+	#[cfg(feature = "enable")]
+	unsafe {
+		Zone {
+			ctx: sys::___tracy_emit_zone_begin_callstack(&loc.loc, depth as _, active as _),
+		}
+	}
+	#[cfg(not(feature = "enable"))]
+	Zone { ctx: () }
 }
 
 pub struct Zone {
@@ -25,26 +46,131 @@ impl Drop for Zone {
 	}
 }
 
+#[cfg(feature = "unstable")]
+pub const fn get_function_name_from_local_type<T, const TY: usize>() -> [u8; std::any::type_name::<T>().len() - (TY + 1)]
+where
+	[(); std::any::type_name::<T>().len() - (TY + 1)]:,
+{
+	let mut name = [0; std::any::type_name::<T>().len() - (TY + 1)];
+	unsafe {
+		std::ptr::copy_nonoverlapping(std::any::type_name::<T>().as_ptr(), name.as_mut_ptr(), name.len() - 1);
+		name
+	}
+}
+
 pub struct ZoneLocation {
 	#[cfg(feature = "enable")]
-	loc: ___tracy_source_location_data,
+	loc: sys::___tracy_source_location_data,
 	#[cfg(not(feature = "enable"))]
 	loc: (),
 }
 
+unsafe impl Send for ZoneLocation {}
+unsafe impl Sync for ZoneLocation {}
+
+impl ZoneLocation {
+	pub const fn from_function_file_line(function: &CStr, file: &CStr, line: u32) -> Self {
+		Self {
+			loc: sys::___tracy_source_location_data {
+				name: std::ptr::null(),
+				function: function.as_ptr(),
+				file: file.as_ptr(),
+				line,
+				color: Color::none().to_u32(),
+			},
+		}
+	}
+
+	pub const fn from_name_function_file_line(name: &CStr, function: &CStr, file: &CStr, line: u32) -> Self {
+		Self {
+			loc: sys::___tracy_source_location_data {
+				name: name.as_ptr(),
+				function: function.as_ptr(),
+				file: file.as_ptr(),
+				line,
+				color: Color::none().to_u32(),
+			},
+		}
+	}
+
+	pub const fn from_function_file_line_color(function: &CStr, file: &CStr, line: u32, color: Color) -> Self {
+		Self {
+			loc: sys::___tracy_source_location_data {
+				name: std::ptr::null(),
+				function: function.as_ptr(),
+				file: file.as_ptr(),
+				line,
+				color: color.to_u32(),
+			},
+		}
+	}
+
+	pub const fn from_name_function_file_line_color(
+		name: &CStr, function: &CStr, file: &CStr, line: u32, color: Color,
+	) -> Self {
+		Self {
+			loc: sys::___tracy_source_location_data {
+				name: name.as_ptr(),
+				function: function.as_ptr(),
+				file: file.as_ptr(),
+				line,
+				color: color.to_u32(),
+			},
+		}
+	}
+}
+
 #[cfg(all(feature = "enable", feature = "unstable"))]
 #[macro_export]
+/// Get a `&'static ZoneLocation`.
 macro_rules! get_location {
-	() => {
-		#![feature(inline_const)]
-		{
-			struct S;
-			let function = const {
-				let name = std::any::type_name::<S>();
-			};
-			$crate::zone::ZoneLocation { loc: () }
-		}
-	};
+	() => {{
+		struct S;
+		static FUNCTION: &[u8] = &$crate::zone::get_function_name_from_local_type::<S, 1>();
+		static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation::from_function_file_line(
+			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(FUNCTION) },
+			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!(file!(), "\0").as_bytes()) },
+			line!(),
+		);
+		&LOC
+	}};
+
+	($name:literal $(,)?) => {{
+		struct S;
+		static FUNCTION: &[u8] = &$crate::zone::get_function_name_from_local_type::<S, 1>();
+		static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation::from_name_function_file_line(
+			$crate::c_str!($name),
+			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(FUNCTION) },
+			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!(file!(), "\0").as_bytes()) },
+			line!(),
+		);
+		&LOC
+	}};
+
+	($color:expr $(,)?) => {{
+		struct S;
+		static FUNCTION: &[u8] = &$crate::zone::get_function_name_from_local_type::<S, 1>();
+		static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation::from_function_file_line_color(
+			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(FUNCTION) },
+			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!(file!(), "\0").as_bytes()) },
+			line!(),
+			$color,
+		);
+		&LOC
+	}};
+
+	($name:literal, $color:expr $(,)?) => {{
+		struct S;
+		static FUNCTION: &[u8] = &$crate::zone::get_function_name_from_local_type::<S, 1>();
+		static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation::from_name_function_file_line_color(
+			$crate::c_str!($name),
+			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(FUNCTION) },
+			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!(file!(), "\0").as_bytes()) },
+			line!(),
+			$color,
+		);
+		&LOC
+	}};
 }
 
 #[cfg(all(feature = "enable", not(feature = "unstable")))]
@@ -60,7 +186,15 @@ macro_rules! get_location {
 #[cfg(not(feature = "enable"))]
 #[macro_export]
 macro_rules! get_location {
+	() => {
+		ZoneLocation { loc: () }
+	};
+
 	($name:literal) => {
+		ZoneLocation { loc: () }
+	};
+
+	($color:expr) => {
 		ZoneLocation { loc: () }
 	};
 }
