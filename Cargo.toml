@@ -1,0 +1,58 @@
+[package]
+name = "tracy_full"
+version = "0.8.1"
+authors = ["SparkyPotato"]
+license = "MIT"
+edition = "2021"
+
+readme = "README.md"
+repository = "https://github.com/SparkyPotato/tracy_full"
+documentation = "https://docs.rs/tracy_full"
+description = "Fully featured bindings for the Tracy profiler"
+
+[[test]]
+name = "tests"
+path = "tests/tests.rs"
+harness = false
+required-features = ["enable", "context-switch-tracing", "sampling", "code-transfer", "broadcast"]
+
+[features]
+# Default features that tracy uses.
+default = ["system-tracing", "context-switch-tracing", "sampling", "code-transfer", "broadcast"]
+
+# Enable nightly-only features and optimizations.
+unstable = []
+
+# Enable the capture of profiling data. Disabled by default.
+enable = ["sys/enable"]
+# Enable support for fibers, coroutines, and async/await.
+fibers = ["sys/fibers"]
+
+# Enable the capture of system-level details, if possible.
+system-tracing = ["sys/system-tracing"]
+# Enable the capture of context-switch data.
+context-switch-tracing = ["sys/context-switch-tracing"]
+# Enable sampling of call-stacks..
+sampling = ["sys/sampling"]
+# Enable the capture of machine code data.
+code-transfer = ["sys/code-transfer"]
+
+# Enable the broadcast of profiling data on the network.
+broadcast = ["sys/broadcast"]
+# Connect only to profiles running on the same machine.
+only-localhost = ["sys/only-localhost"]
+# Connect through IPv4 only.
+only-ipv4 = ["sys/only-ipv4"]
+
+# Enable support for low-resolution timers.
+timer-fallback = ["sys/timer-fallback"]
+# Enable support for profiling on demand. This has a minor performance penalty.
+ondemand = ["sys/ondemand"]
+
+[build-dependencies]
+rustc_version = "0.4"
+
+[dependencies]
+sys = { package = "tracy-client-sys", version = "0.17.0", default-features = false }
+
+ctor = "0.1.22"
