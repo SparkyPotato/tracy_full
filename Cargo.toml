@@ -22,11 +22,13 @@ default = ["system-tracing", "context-switch-tracing", "sampling", "code-transfe
 
 # Enable nightly-only features and optimizations.
 unstable = []
+# Enable the nightly Allocator API features.
+allocator_api = ["unstable"]
 
 # Enable the capture of profiling data. Disabled by default.
 enable = ["sys/enable"]
 # Enable support for fibers, coroutines, and async/await.
-fibers = ["sys/fibers"]
+futures = ["sys/fibers"]
 
 # Enable the capture of system-level details, if possible.
 system-tracing = ["sys/system-tracing"]

@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use std::{ffi::CStr, marker::PhantomData};
 
 /// Macro to make working with frame marks easier.
 ///
@@ -60,13 +60,20 @@ pub fn discontinuous_frame(name: &'static CStr) -> DiscontinuousFrame {
 	#[cfg(feature = "enable")]
 	unsafe {
 		sys::___tracy_emit_frame_mark_start(name.as_ptr());
-		DiscontinuousFrame { name }
+		DiscontinuousFrame {
+			unsend: PhantomData,
+			name,
+		}
 	}
 	#[cfg(not(feature = "enable"))]
-	DiscontinuousFrame { name: () }
+	DiscontinuousFrame {
+		unsend: PhantomData,
+		name: (),
+	}
 }
 
 pub struct DiscontinuousFrame {
+	unsend: PhantomData<*mut ()>,
 	#[cfg(feature = "enable")]
 	name: &'static CStr,
 	#[cfg(not(feature = "enable"))]

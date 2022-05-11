@@ -1,36 +1,89 @@
-use std::ffi::CStr;
+use std::{ffi::CStr, marker::PhantomData};
 
 use crate::color::Color;
 
 #[macro_export]
 macro_rules! zone {
-	() => {};
+	() => {
+		let _zone = $crate::zone::zone($crate::get_location!(), true);
+	};
+
+	($name:literal, $enabled:expr $(,)?) => {
+		let _zone = $crate::zone::zone($crate::get_location!($name), $enabled);
+	};
+
+	($color:expr, $enabled:expr $(,)?) => {
+		let _zone = $crate::zone::zone($crate::get_location!($color), $enabled);
+	};
+
+	($name:literal, $color:expr, $enabled:expr $(,)?) => {
+		let _zone = $crate::zone::zone($crate::get_location!($name, $color), $enabled);
+	};
+}
+
+#[macro_export]
+macro_rules! zone_sample {
+	($depth:literal) => {
+		let _zone = $crate::zone::zone_sample($crate::get_location!(), $crate::clamp_callstack_depth($depth), true);
+	};
+
+	($name:literal, $depth:literal, $enabled:expr $(,)?) => {
+		let _zone = $crate::zone::zone_sample(
+			$crate::get_location!($name),
+			$crate::clamp_callstack_depth($depth),
+			$enabled,
+		);
+	};
+
+	($color:expr, $depth:literal, $enabled:expr $(,)?) => {
+		let _zone = $crate::zone::zone_sample(
+			$crate::get_location!($color),
+			$crate::clamp_callstack_depth($depth),
+			$enabled,
+		);
+	};
+
+	($name:literal, $color:expr, $depth:literal, $enabled:expr $(,)?) => {
+		let _zone = $crate::zone::zone_sample(
+			$crate::get_location!($name, $color),
+			$crate::clamp_callstack_depth($depth),
+			$enabled,
+		);
+	};
 }
 
 pub fn zone(loc: &'static ZoneLocation, active: bool) -> Zone {
 	#[cfg(feature = "enable")]
 	unsafe {
 		Zone {
+			unsend: PhantomData,
 			ctx: sys::___tracy_emit_zone_begin(&loc.loc, active as _),
 		}
 	}
 	#[cfg(not(feature = "enable"))]
-	Zone { ctx: () }
+	Zone {
+		unsend: PhantomData,
+		ctx: (),
+	}
 }
 
-#[cfg(feature = "sampling")]
 pub fn zone_sample(loc: &'static ZoneLocation, depth: u32, active: bool) -> Zone {
 	#[cfg(feature = "enable")]
 	unsafe {
 		Zone {
+			unsend: PhantomData,
 			ctx: sys::___tracy_emit_zone_begin_callstack(&loc.loc, depth as _, active as _),
 		}
 	}
 	#[cfg(not(feature = "enable"))]
-	Zone { ctx: () }
+	Zone {
+		unsend: PhantomData,
+		ctx: (),
+	}
 }
 
 pub struct Zone {
+	unsend: PhantomData<*mut ()>,
 	#[cfg(feature = "enable")]
 	ctx: sys::___tracy_c_zone_context,
 	#[cfg(not(feature = "enable"))]
@@ -46,6 +99,7 @@ impl Drop for Zone {
 	}
 }
 
+#[doc(hidden)]
 #[cfg(feature = "unstable")]
 pub const fn get_function_name_from_local_type<T, const TY: usize>() -> [u8; std::any::type_name::<T>().len() - (TY + 1)]
 where
@@ -70,53 +124,77 @@ unsafe impl Sync for ZoneLocation {}
 
 impl ZoneLocation {
 	pub const fn from_function_file_line(function: &CStr, file: &CStr, line: u32) -> Self {
-		Self {
-			loc: sys::___tracy_source_location_data {
-				name: std::ptr::null(),
-				function: function.as_ptr(),
-				file: file.as_ptr(),
-				line,
-				color: Color::none().to_u32(),
-			},
+		#[cfg(feature = "enable")]
+		{
+			Self {
+				loc: sys::___tracy_source_location_data {
+					name: std::ptr::null(),
+					function: function.as_ptr(),
+					file: file.as_ptr(),
+					line,
+					color: Color::none().to_u32(),
+				},
+			}
 		}
+
+		#[cfg(not(feature = "enable"))]
+		Self { loc: () }
 	}
 
 	pub const fn from_name_function_file_line(name: &CStr, function: &CStr, file: &CStr, line: u32) -> Self {
-		Self {
-			loc: sys::___tracy_source_location_data {
-				name: name.as_ptr(),
-				function: function.as_ptr(),
-				file: file.as_ptr(),
-				line,
-				color: Color::none().to_u32(),
-			},
+		#[cfg(feature = "enable")]
+		{
+			Self {
+				loc: sys::___tracy_source_location_data {
+					name: name.as_ptr(),
+					function: function.as_ptr(),
+					file: file.as_ptr(),
+					line,
+					color: Color::none().to_u32(),
+				},
+			}
 		}
+
+		#[cfg(not(feature = "enable"))]
+		Self { loc: () }
 	}
 
 	pub const fn from_function_file_line_color(function: &CStr, file: &CStr, line: u32, color: Color) -> Self {
-		Self {
-			loc: sys::___tracy_source_location_data {
-				name: std::ptr::null(),
-				function: function.as_ptr(),
-				file: file.as_ptr(),
-				line,
-				color: color.to_u32(),
-			},
+		#[cfg(feature = "enable")]
+		{
+			Self {
+				loc: sys::___tracy_source_location_data {
+					name: std::ptr::null(),
+					function: function.as_ptr(),
+					file: file.as_ptr(),
+					line,
+					color: color.to_u32(),
+				},
+			}
 		}
+
+		#[cfg(not(feature = "enable"))]
+		Self { loc: () }
 	}
 
 	pub const fn from_name_function_file_line_color(
 		name: &CStr, function: &CStr, file: &CStr, line: u32, color: Color,
 	) -> Self {
-		Self {
-			loc: sys::___tracy_source_location_data {
-				name: name.as_ptr(),
-				function: function.as_ptr(),
-				file: file.as_ptr(),
-				line,
-				color: color.to_u32(),
-			},
+		#[cfg(feature = "enable")]
+		{
+			Self {
+				loc: sys::___tracy_source_location_data {
+					name: name.as_ptr(),
+					function: function.as_ptr(),
+					file: file.as_ptr(),
+					line,
+					color: color.to_u32(),
+				},
+			}
 		}
+
+		#[cfg(not(feature = "enable"))]
+		Self { loc: () }
 	}
 }
 

@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 #![allow(incomplete_features)]
+#![allow(unused_imports)]
 #![allow(unused_variables)]
+#![cfg_attr(feature = "allocator_api", feature(allocator_api))]
+#![cfg_attr(feature = "allocator_api", feature(slice_ptr_len))]
 #![cfg_attr(feature = "unstable", feature(const_intrinsic_copy))]
 #![cfg_attr(feature = "unstable", feature(const_mut_refs))]
 #![cfg_attr(feature = "unstable", feature(const_type_name))]
@@ -8,8 +11,12 @@
 
 use std::{error::Error, ffi::CString};
 
+pub mod alloc;
 pub mod color;
 pub mod frame;
+#[cfg(feature = "futures")]
+pub mod future;
+pub mod plot;
 pub mod zone;
 
 #[cfg(feature = "enable")]
@@ -30,6 +37,14 @@ where
 	unsafe {
 		let cstr = name.try_into().expect("name is not a valid string");
 		sys::___tracy_set_thread_name(cstr.as_ptr());
+	}
+}
+
+pub const fn clamp_callstack_depth(depth: u32) -> u32 {
+	if depth < 62 {
+		depth
+	} else {
+		62
 	}
 }
 
