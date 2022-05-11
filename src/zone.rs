@@ -4,21 +4,25 @@ use crate::color::Color;
 
 #[macro_export]
 macro_rules! zone {
-	() => {
-		let _zone = $crate::zone::zone($crate::get_location!(), true);
-	};
+	() => {{
+		let loc = $crate::get_location!();
+		let _zone = $crate::zone::zone(loc, true);
+	}};
 
-	($name:literal, $enabled:expr $(,)?) => {
-		let _zone = $crate::zone::zone($crate::get_location!($name), $enabled);
-	};
+	($name:literal, $enabled:expr $(,)?) => {{
+		let loc = $crate::get_location!($name);
+		let _zone = $crate::zone::zone(loc, $enabled);
+	}};
 
-	($color:expr, $enabled:expr $(,)?) => {
-		let _zone = $crate::zone::zone($crate::get_location!($color), $enabled);
-	};
+	($color:expr, $enabled:expr $(,)?) => {{
+		let loc = $crate::get_location!($color);
+		let _zone = $crate::zone::zone(loc, $enabled);
+	}};
 
-	($name:literal, $color:expr, $enabled:expr $(,)?) => {
-		let _zone = $crate::zone::zone($crate::get_location!($name, $color), $enabled);
-	};
+	($name:literal, $color:expr, $enabled:expr $(,)?) => {{
+		let loc = $crate::get_location!($name, $color);
+		let _zone = $crate::zone::zone(loc, $enabled);
+	}};
 }
 
 #[macro_export]
@@ -116,7 +120,7 @@ pub struct ZoneLocation {
 	#[cfg(feature = "enable")]
 	loc: sys::___tracy_source_location_data,
 	#[cfg(not(feature = "enable"))]
-	loc: (),
+	pub loc: (),
 }
 
 unsafe impl Send for ZoneLocation {}
@@ -203,14 +207,16 @@ impl ZoneLocation {
 /// Get a `&'static ZoneLocation`.
 macro_rules! get_location {
 	() => {{
-		struct S;
-		static FUNCTION: &[u8] = &$crate::zone::get_function_name_from_local_type::<S, 1>();
-		static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation::from_function_file_line(
-			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(FUNCTION) },
-			unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!(file!(), "\0").as_bytes()) },
-			line!(),
-		);
-		&LOC
+		{
+			struct S;
+			static FUNCTION: &[u8] = &$crate::zone::get_function_name_from_local_type::<S, 1>();
+			static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation::from_function_file_line(
+				unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(FUNCTION) },
+				unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!(file!(), "\0").as_bytes()) },
+				line!(),
+			);
+			&LOC
+		}
 	}};
 
 	($name:literal $(,)?) => {{
@@ -264,15 +270,18 @@ macro_rules! get_location {
 #[cfg(not(feature = "enable"))]
 #[macro_export]
 macro_rules! get_location {
-	() => {
-		ZoneLocation { loc: () }
-	};
+	() => {{
+		static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation { loc: () };
+		&LOC
+	}};
 
-	($name:literal) => {
-		ZoneLocation { loc: () }
-	};
+	($name:literal) => {{
+		static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation { loc: () };
+		&LOC
+	}};
 
-	($color:expr) => {
-		ZoneLocation { loc: () }
-	};
+	($color:expr) => {{
+		static LOC: $crate::zone::ZoneLocation = $crate::zone::ZoneLocation { loc: () };
+		&LOC
+	}};
 }

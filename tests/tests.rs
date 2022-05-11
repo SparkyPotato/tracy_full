@@ -9,7 +9,7 @@ fn main() {
 		if i % 2 == 0 {
 			tracy::frame!(discontinuous "discontinuous");
 
-			let loc = tracy::get_location!(tracy::color::Color::BLUE);
+			tracy::zone!("hi", true);
 		}
 	}
 }

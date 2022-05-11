@@ -14,7 +14,6 @@ description = "Fully featured bindings for the Tracy profiler"
 name = "tests"
 path = "tests/tests.rs"
 harness = false
-required-features = ["enable", "context-switch-tracing", "sampling", "code-transfer", "broadcast"]
 
 [features]
 # Default features that tracy uses.
