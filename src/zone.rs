@@ -56,6 +56,7 @@ macro_rules! zone_sample {
 	};
 }
 
+#[inline(always)]
 pub fn zone(loc: &'static ZoneLocation, active: bool) -> Zone {
 	#[cfg(feature = "enable")]
 	unsafe {
@@ -71,6 +72,7 @@ pub fn zone(loc: &'static ZoneLocation, active: bool) -> Zone {
 	}
 }
 
+#[inline(always)]
 pub fn zone_sample(loc: &'static ZoneLocation, depth: u32, active: bool) -> Zone {
 	#[cfg(feature = "enable")]
 	unsafe {
@@ -95,6 +97,7 @@ pub struct Zone {
 }
 
 impl Drop for Zone {
+	#[inline(always)]
 	fn drop(&mut self) {
 		#[cfg(feature = "enable")]
 		unsafe {

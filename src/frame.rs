@@ -30,7 +30,7 @@ macro_rules! frame {
 	};
 }
 
-#[inline]
+#[inline(always)]
 /// The processing of the main continuous frame has ended.
 ///
 /// A 'continuous frame' is some work that repeats continuously for the duration of the program.
@@ -41,7 +41,7 @@ pub fn frame() {
 	}
 }
 
-#[inline]
+#[inline(always)]
 /// The processing of a secondary continuous frame has ended.
 ///
 /// A 'continuous frame' is some work that repeats continuously for the duration of the program.
@@ -52,7 +52,7 @@ pub fn named_frame(name: &'static CStr) {
 	}
 }
 
-#[inline]
+#[inline(always)]
 /// Start a discontinuous frame. The frame ends when the returned object is dropped.
 ///
 /// A 'discontinuous frame' is some work that runs periodically, with gaps between executions.
@@ -81,7 +81,7 @@ pub struct DiscontinuousFrame {
 }
 
 impl Drop for DiscontinuousFrame {
-	#[inline]
+	#[inline(always)]
 	fn drop(&mut self) {
 		#[cfg(feature = "enable")]
 		unsafe {
@@ -112,6 +112,7 @@ pub struct Image<'a> {
 	pub flip: bool,
 }
 
+#[inline(always)]
 /// Send an image to the profiler.
 ///
 /// The image is attached to the frame that is currently being processed: before a continuous frame mark, or inside a

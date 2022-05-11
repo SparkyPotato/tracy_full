@@ -12,6 +12,8 @@
 use std::{error::Error, ffi::CString};
 
 pub mod alloc;
+#[cfg(feature = "bevy")]
+pub mod bevy;
 pub mod color;
 pub mod frame;
 #[cfg(feature = "futures")]
@@ -27,6 +29,7 @@ unsafe fn startup_tracy() { sys::___tracy_startup_profiler(); }
 #[ctor::dtor]
 unsafe fn shutdown_tracy() { sys::___tracy_shutdown_profiler(); }
 
+#[inline(always)]
 /// Set the current thread's name. Panics if the name contains interior nulls.
 pub fn set_thread_name<T>(name: T)
 where
@@ -40,6 +43,7 @@ where
 	}
 }
 
+#[inline(always)]
 pub const fn clamp_callstack_depth(depth: u32) -> u32 {
 	if depth < 62 {
 		depth

@@ -24,6 +24,9 @@ unstable = []
 # Enable the nightly Allocator API features.
 allocator_api = ["unstable"]
 
+# Bevy support.
+bevy = ["bevy_ecs"]
+
 # Enable the capture of profiling data. Disabled by default.
 enable = ["sys/enable"]
 # Enable support for fibers, coroutines, and async/await.
@@ -56,6 +59,8 @@ rustc_version = "0.4"
 [dependencies]
 ctor = "0.1.22"
 sys = { package = "tracy-client-sys", version = "0.17.0", default-features = false }
+
+bevy_ecs = { version = "*", optional = true }
 
 [target.'cfg(not(unstable))'.dependencies]
 once_cell = "1.10.0"

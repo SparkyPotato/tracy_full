@@ -19,6 +19,7 @@ pub struct FutureWrapper<'a, T> {
 }
 
 impl<'a, T> FutureWrapper<'a, T> {
+	#[inline(always)]
 	pub const fn new(name: &'a CStr, inner: T) -> Self {
 		Self {
 			#[cfg(feature = "enable")]
@@ -31,6 +32,7 @@ impl<'a, T> FutureWrapper<'a, T> {
 impl<T: Future> Future for FutureWrapper<'_, T> {
 	type Output = T::Output;
 
+	#[inline(always)]
 	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
 		#[cfg(feature = "enable")]
 		unsafe {

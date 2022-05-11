@@ -15,6 +15,7 @@ pub struct Plotter<'a> {
 }
 
 impl<'a> Plotter<'a> {
+	#[inline(always)]
 	pub const fn new(name: &'a CStr) -> Self {
 		Self {
 			#[cfg(feature = "enable")]
@@ -24,6 +25,7 @@ impl<'a> Plotter<'a> {
 		}
 	}
 
+	#[inline(always)]
 	pub fn value(&self, value: f64) {
 		#[cfg(feature = "enable")]
 		unsafe {

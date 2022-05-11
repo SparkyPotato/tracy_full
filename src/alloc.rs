@@ -29,6 +29,7 @@ pub struct TrackedAllocator<'a, T> {
 
 #[cfg(feature = "allocator_api")]
 impl<'a, T: Allocator> TrackedAllocator<'a, T> {
+	#[inline(always)]
 	pub const fn new(inner: T, name: &'a CStr) -> Self {
 		Self {
 			inner,
@@ -132,6 +133,7 @@ pub struct TrackedAllocatorSampled<T> {
 
 #[cfg(feature = "allocator_api")]
 impl<T: Allocator> TrackedAllocatorSampled<T> {
+	#[inline(always)]
 	pub const fn new(inner: T, name: &'static CStr, depth: u32) -> Self {
 		Self {
 			inner,
@@ -261,18 +263,22 @@ pub struct GlobalAllocator<T = System> {
 }
 
 impl GlobalAllocator {
+	#[inline(always)]
 	pub const fn new() -> Self { Self::new_wth(System) }
 }
 
 impl<T: GlobalAlloc> GlobalAllocator<T> {
+	#[inline(always)]
 	pub const fn new_wth(inner: T) -> Self { Self { inner } }
 }
 
 impl Default for GlobalAllocator {
+	#[inline(always)]
 	fn default() -> Self { Self::new() }
 }
 
 unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocator<T> {
+	#[inline(always)]
 	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
 		let value = self.inner.alloc(layout);
 		#[cfg(feature = "enable")]
@@ -280,12 +286,14 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocator<T> {
 		value
 	}
 
+	#[inline(always)]
 	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
 		#[cfg(feature = "enable")]
 		sys::___tracy_emit_memory_free(ptr as _, 0);
 		self.inner.dealloc(ptr, layout);
 	}
 
+	#[inline(always)]
 	unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
 		let value = self.inner.alloc_zeroed(layout);
 		#[cfg(feature = "enable")]
@@ -293,6 +301,7 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocator<T> {
 		value
 	}
 
+	#[inline(always)]
 	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
 		#[cfg(feature = "enable")]
 		sys::___tracy_emit_memory_free(ptr as _, 0);
@@ -310,10 +319,12 @@ pub struct GlobalAllocatorSampled<T = System> {
 }
 
 impl GlobalAllocatorSampled {
+	#[inline(always)]
 	pub const fn new(depth: u32) -> Self { Self::new_with(System, depth) }
 }
 
 impl<T: GlobalAlloc> GlobalAllocatorSampled<T> {
+	#[inline(always)]
 	pub const fn new_with(inner: T, depth: u32) -> Self {
 		Self {
 			inner,
@@ -324,6 +335,7 @@ impl<T: GlobalAlloc> GlobalAllocatorSampled<T> {
 }
 
 unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocatorSampled<T> {
+	#[inline(always)]
 	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
 		let value = self.inner.alloc(layout);
 		#[cfg(feature = "enable")]
@@ -331,12 +343,14 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocatorSampled<T> {
 		value
 	}
 
+	#[inline(always)]
 	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
 		#[cfg(feature = "enable")]
 		sys::___tracy_emit_memory_free_callstack(ptr as _, self.depth, 0);
 		self.inner.dealloc(ptr, layout);
 	}
 
+	#[inline(always)]
 	unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
 		let value = self.inner.alloc_zeroed(layout);
 		#[cfg(feature = "enable")]
@@ -344,6 +358,7 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocatorSampled<T> {
 		value
 	}
 
+	#[inline(always)]
 	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
 		#[cfg(feature = "enable")]
 		sys::___tracy_emit_memory_free_callstack(ptr as _, self.depth, 0);

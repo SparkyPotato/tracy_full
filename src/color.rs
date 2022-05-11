@@ -13,13 +13,17 @@ impl Color {
 }
 
 impl Color {
+	#[inline(always)]
 	pub const fn new(r: u8, g: u8, b: u8) -> Color { Color((r as u32) << 16 | (g as u32) << 8 | (b as u32) << 0) }
 
+	#[inline(always)]
 	pub const fn none() -> Color { Color(0) }
 
+	#[inline(always)]
 	pub const fn to_u32(&self) -> u32 { self.0 }
 }
 
 impl Into<u32> for Color {
+	#[inline(always)]
 	fn into(self) -> u32 { self.0 }
 }
