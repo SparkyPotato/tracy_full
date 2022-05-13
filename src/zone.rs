@@ -4,25 +4,35 @@ use crate::color::Color;
 
 #[macro_export]
 macro_rules! zone {
-	() => {{
+	() => {
 		let loc = $crate::get_location!();
 		let _zone = $crate::zone::zone(loc, true);
-	}};
+	};
 
-	($name:literal, $enabled:expr $(,)?) => {{
+	($name:literal $(,)?) => {
+		let loc = $crate::get_location!($name);
+		let _zone = $crate::zone::zone(loc, true);
+	};
+
+	($color:expr $(,)?) => {
+		let loc = $crate::get_location!($color);
+		let _zone = $crate::zone::zone(loc, true);
+	};
+
+	($name:literal, $enabled:expr $(,)?) => {
 		let loc = $crate::get_location!($name);
 		let _zone = $crate::zone::zone(loc, $enabled);
-	}};
+	};
 
-	($color:expr, $enabled:expr $(,)?) => {{
+	($color:expr, $enabled:expr $(,)?) => {
 		let loc = $crate::get_location!($color);
 		let _zone = $crate::zone::zone(loc, $enabled);
-	}};
+	};
 
-	($name:literal, $color:expr, $enabled:expr $(,)?) => {{
+	($name:literal, $color:expr, $enabled:expr $(,)?) => {
 		let loc = $crate::get_location!($name, $color);
 		let _zone = $crate::zone::zone(loc, $enabled);
-	}};
+	};
 }
 
 #[macro_export]

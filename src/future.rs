@@ -1,6 +1,7 @@
 use std::{
 	ffi::CStr,
 	future::Future,
+	marker::PhantomData,
 	pin::Pin,
 	task::{Context, Poll},
 };
@@ -15,6 +16,8 @@ macro_rules! trace_future {
 pub struct FutureWrapper<'a, T> {
 	#[cfg(feature = "enable")]
 	name: &'a CStr,
+	#[cfg(not(feature = "enable"))]
+	phantom: PhantomData<&'a ()>,
 	inner: T,
 }
 
@@ -24,6 +27,8 @@ impl<'a, T> FutureWrapper<'a, T> {
 		Self {
 			#[cfg(feature = "enable")]
 			name,
+			#[cfg(not(feature = "enable"))]
+			phantom: PhantomData,
 			inner,
 		}
 	}

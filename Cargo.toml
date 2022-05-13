@@ -25,7 +25,11 @@ unstable = []
 allocator_api = ["unstable"]
 
 # Bevy support.
-bevy = ["bevy_ecs"]
+bevy = ["bevy_ecs", "futures"]
+# Tracing support.
+tracing = ["dep:tracing", "tracing-subscriber"]
+# WGPU support.
+wgpu = ["dep:wgpu", "wgpu-core", "futures-lite"]
 
 # Enable the capture of profiling data. Disabled by default.
 enable = ["sys/enable"]
@@ -61,6 +65,11 @@ ctor = "0.1.22"
 sys = { package = "tracy-client-sys", version = "0.17.0", default-features = false }
 
 bevy_ecs = { version = "*", optional = true }
+futures-lite = { version = "*", optional = true }
+tracing = { version = "*", optional = true }
+tracing-subscriber = { version = "*", optional = true }
+wgpu = { version = "*", optional = true, default-features = false }
+wgpu-core = { version = "*", optional = true }
 
 [target.'cfg(not(unstable))'.dependencies]
 once_cell = "1.10.0"

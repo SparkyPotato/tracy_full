@@ -6,11 +6,12 @@ use bevy_ecs::{
 	prelude::{SystemLabel, World},
 	query::Access,
 	schedule::SystemDescriptor,
-	system::System,
+	system::{IntoSystem, System},
 };
 
 #[inline(always)]
-pub fn profile<T: System>(sys: T) -> SystemWrapper<T> {
+pub fn timeline<In, Out, Params, T: IntoSystem<In, Out, Params>>(sys: T) -> SystemWrapper<T::System> {
+	let sys = T::into_system(sys);
 	SystemWrapper {
 		name: CString::new::<Vec<u8>>(match sys.name() {
 			Cow::Borrowed(b) => b.into(),
@@ -46,17 +47,17 @@ where
 	fn is_send(&self) -> bool { self.inner.is_send() }
 
 	#[inline(always)]
-	unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out { self.inner.run_unsafe(input, world) }
+	unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
+		#[cfg(feature = "enable")]
+		sys::___tracy_fiber_enter(self.name.as_ptr());
+		let out = self.inner.run_unsafe(input, world);
+		#[cfg(feature = "enable")]
+		sys::___tracy_fiber_leave();
+		out
+	}
 
 	#[inline(always)]
-	fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
-		unsafe {
-			sys::___tracy_fiber_enter(self.name.as_ptr());
-			let out = self.inner.run(input, world);
-			sys::___tracy_fiber_leave();
-			out
-		}
-	}
+	fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out { self.inner.run(input, world) }
 
 	#[inline(always)]
 	fn apply_buffers(&mut self, world: &mut World) { self.inner.apply_buffers(world) }

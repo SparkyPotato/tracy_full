@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(incomplete_features)]
 #![allow(unused_imports)]
+#![allow(unused_mut)]
 #![allow(unused_variables)]
 #![cfg_attr(feature = "allocator_api", feature(allocator_api))]
 #![cfg_attr(feature = "allocator_api", feature(slice_ptr_len))]
@@ -19,6 +20,10 @@ pub mod frame;
 #[cfg(feature = "futures")]
 pub mod future;
 pub mod plot;
+#[cfg(feature = "tracing")]
+pub mod tracing;
+#[cfg(feature = "wgpu")]
+pub mod wgpu;
 pub mod zone;
 
 #[cfg(feature = "enable")]
