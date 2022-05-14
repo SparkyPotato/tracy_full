@@ -13,6 +13,8 @@ use futures_lite::{
 	FutureExt,
 };
 use wgpu::{
+	Adapter,
+	Backend,
 	Buffer,
 	BufferAsyncError,
 	BufferDescriptor,
@@ -161,7 +163,7 @@ pub struct ProfileContext {
 
 impl ProfileContext {
 	/// Device needs `Features::TIMESTAMP_QUERY` enabled.
-	pub fn new(device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
+	pub fn new(adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
 		#[cfg(feature = "enable")]
 		{
 			// We have to make our own struct and transmute it because the bindgened one has a private field for some
@@ -198,20 +200,15 @@ impl ProfileContext {
 			let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
 			pool.reset();
 
-			let mut type_ = 0;
-			unsafe {
-				device.as_hal::<Vulkan, _, _>(|dev| {
-					if dev.is_some() {
-						type_ = 2;
-					}
-				});
-				#[cfg(target_os = "linux")]
-				device.as_hal::<Dx12, _, _>(|dev| {
-					if dev.is_some() {
-						type_ = 4;
-					}
-				});
-			}
+			let mut type_ = match adapter.get_info().backend {
+				Backend::Empty => 0,
+				Backend::Gl => 1,
+				Backend::Vulkan => 2,
+				Backend::Dx12 => 4,
+				Backend::Dx11 => 5,
+				Backend::Metal => 6,
+				Backend::BrowserWebGpu => 7,
+			};
 
 			unsafe {
 				sys::___tracy_emit_gpu_new_context_serial(std::mem::transmute(ContextData {
@@ -237,8 +234,8 @@ impl ProfileContext {
 		}
 	}
 
-	pub fn with_name(name: &str, device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
-		let this = Self::new(device, queue, buffered_frames);
+	pub fn with_name(name: &str, adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
+		let this = Self::new(adapter, device, queue, buffered_frames);
 
 		#[cfg(feature = "enable")]
 		unsafe {
