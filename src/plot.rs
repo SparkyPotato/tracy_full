@@ -1,5 +1,6 @@
 use std::{ffi::CStr, marker::PhantomData};
 
+/// Create a plotter.
 #[macro_export]
 macro_rules! plotter {
 	($name:literal) => {
@@ -7,6 +8,7 @@ macro_rules! plotter {
 	};
 }
 
+/// A plotter.
 pub struct Plotter<'a> {
 	#[cfg(feature = "enable")]
 	name: &'a CStr,
@@ -25,6 +27,7 @@ impl<'a> Plotter<'a> {
 		}
 	}
 
+	/// Emit a value for the plotter.
 	#[inline(always)]
 	pub fn value(&self, value: f64) {
 		#[cfg(feature = "enable")]

@@ -6,6 +6,7 @@ use std::{
 	task::{Context, Poll},
 };
 
+/// Create a profiled future that appears as a fiber.
 #[macro_export]
 macro_rules! trace_future {
 	($name:literal, $future:expr) => {
@@ -13,6 +14,7 @@ macro_rules! trace_future {
 	};
 }
 
+/// A wrapper for a future that appears a separate fiber.
 pub struct FutureWrapper<'a, T> {
 	#[cfg(feature = "enable")]
 	name: &'a CStr,

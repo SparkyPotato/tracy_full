@@ -6,13 +6,13 @@ use std::{ffi::CStr, marker::PhantomData};
 /// ```
 /// # use tracy_full::frame;
 ///
-/// // Main continuous frame.
+/// // End of main continuous frame.
 /// frame!();
 ///
-/// // Secondary continuous frame.
+/// // End of secondary continuous frame.
 /// frame!("Secondary Frame");
 ///
-/// // Discontinuous frame.
+/// // Discontinuous frame in the current scope.
 /// frame!(discontinuous "Discontinuous Frame");
 /// ```
 #[macro_export]
@@ -30,10 +30,10 @@ macro_rules! frame {
 	};
 }
 
-#[inline(always)]
 /// The processing of the main continuous frame has ended.
 ///
 /// A 'continuous frame' is some work that repeats continuously for the duration of the program.
+#[inline(always)]
 pub fn frame() {
 	#[cfg(feature = "enable")]
 	unsafe {
@@ -41,10 +41,10 @@ pub fn frame() {
 	}
 }
 
-#[inline(always)]
 /// The processing of a secondary continuous frame has ended.
 ///
 /// A 'continuous frame' is some work that repeats continuously for the duration of the program.
+#[inline(always)]
 pub fn named_frame(name: &'static CStr) {
 	#[cfg(feature = "enable")]
 	unsafe {
@@ -52,10 +52,10 @@ pub fn named_frame(name: &'static CStr) {
 	}
 }
 
-#[inline(always)]
 /// Start a discontinuous frame. The frame ends when the returned object is dropped.
 ///
 /// A 'discontinuous frame' is some work that runs periodically, with gaps between executions.
+#[inline(always)]
 pub fn discontinuous_frame(name: &'static CStr) -> DiscontinuousFrame {
 	#[cfg(feature = "enable")]
 	unsafe {
@@ -72,6 +72,7 @@ pub fn discontinuous_frame(name: &'static CStr) -> DiscontinuousFrame {
 	}
 }
 
+/// A discontinuous frame.
 pub struct DiscontinuousFrame {
 	unsend: PhantomData<*mut ()>,
 	#[cfg(feature = "enable")]
@@ -112,11 +113,11 @@ pub struct Image<'a> {
 	pub flip: bool,
 }
 
-#[inline(always)]
 /// Send an image to the profiler.
 ///
 /// The image is attached to the frame that is currently being processed: before a continuous frame mark, or inside a
 /// discontinuous frame.
+#[inline(always)]
 pub fn frame_image(image: Image) {
 	#[cfg(feature = "enable")]
 	unsafe {

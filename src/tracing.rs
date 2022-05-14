@@ -7,6 +7,7 @@ thread_local! {
 	static STACK: UnsafeCell<Vec<u32>> = UnsafeCell::new(Vec::new());
 }
 
+/// A tracing layer that tracks spans.
 pub struct TracyLayer;
 
 impl<S> Layer<S> for TracyLayer

@@ -34,8 +34,8 @@ unsafe fn startup_tracy() { sys::___tracy_startup_profiler(); }
 #[ctor::dtor]
 unsafe fn shutdown_tracy() { sys::___tracy_shutdown_profiler(); }
 
-#[inline(always)]
 /// Set the current thread's name. Panics if the name contains interior nulls.
+#[inline(always)]
 pub fn set_thread_name<T>(name: T)
 where
 	T: TryInto<CString>,
@@ -48,6 +48,7 @@ where
 	}
 }
 
+/// Clamp a requested callstack depth to the maximum supported by tracy (62).
 #[inline(always)]
 pub const fn clamp_callstack_depth(depth: u32) -> u32 {
 	if depth < 62 {

@@ -1,3 +1,5 @@
+//! Bevy related profiling.
+
 use std::{borrow::Cow, ffi::CString};
 
 use bevy_ecs::{
@@ -9,6 +11,7 @@ use bevy_ecs::{
 	system::{IntoSystem, System},
 };
 
+/// Create a system that appears as a separate fiber in the profiler.
 #[inline(always)]
 pub fn timeline<In, Out, Params, T: IntoSystem<In, Out, Params>>(sys: T) -> SystemWrapper<T::System> {
 	let sys = T::into_system(sys);
@@ -22,6 +25,7 @@ pub fn timeline<In, Out, Params, T: IntoSystem<In, Out, Params>>(sys: T) -> Syst
 	}
 }
 
+/// A wrapper around a system that appears as a separate fiber in the profiler.
 pub struct SystemWrapper<T> {
 	inner: T,
 	name: CString,

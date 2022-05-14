@@ -1,3 +1,5 @@
+//! Tracy colors.
+
 #[repr(transparent)]
 pub struct Color(u32);
 

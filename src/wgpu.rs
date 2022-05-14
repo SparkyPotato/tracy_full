@@ -37,6 +37,7 @@ use wgpu::{
 };
 use wgpu_core::api::{Dx12, Vulkan};
 
+/// Create a profiled command encoder.
 #[macro_export]
 macro_rules! wgpu_command_encoder {
 	($device:expr, $profiler:expr, $desc:expr $(,)?) => {{
@@ -46,6 +47,7 @@ macro_rules! wgpu_command_encoder {
 	}};
 }
 
+/// Create a profiled render pass from a profiled command encoder.
 #[macro_export]
 macro_rules! wgpu_render_pass {
 	($encoder:expr, $desc:expr) => {{
@@ -147,6 +149,7 @@ impl FrameInFlight {
 	}
 }
 
+/// A context for profiling the GPU.
 pub struct ProfileContext {
 	#[cfg(feature = "enable")]
 	context: u8,
@@ -249,6 +252,7 @@ impl ProfileContext {
 		this
 	}
 
+	/// Create a profiled command encoder.
 	pub fn create_command_encoder<'a>(
 		&'a mut self, device: &'a Device, desc: &CommandEncoderDescriptor, line: u32, file: &str, function: &str,
 	) -> EncoderProfiler<'a> {
@@ -270,6 +274,7 @@ impl ProfileContext {
 		}
 	}
 
+	/// End a frame, uploading the data to Tracy, while also synchronizing for `buffered_frames` frames.
 	pub fn end_frame(&mut self, device: &Device, queue: &Queue) {
 		#[cfg(feature = "enable")]
 		{
@@ -413,6 +418,7 @@ pub struct EncoderProfiler<'a> {
 }
 
 impl EncoderProfiler<'_> {
+	/// Begin a profiled render pass.
 	pub fn begin_render_pass<'a>(
 		&'a mut self, desc: &RenderPassDescriptor<'a, '_>, line: u32, file: &str, function: &str,
 	) -> PassProfiler<'a, RenderPass> {
@@ -435,6 +441,7 @@ impl EncoderProfiler<'_> {
 		}
 	}
 
+	/// Begin a profiled compute pass.
 	pub fn begin_compute_pass<'a>(
 		&'a mut self, desc: &ComputePassDescriptor<'a>, line: u32, file: &str, function: &str,
 	) -> PassProfiler<'a, ComputePass> {
@@ -457,6 +464,7 @@ impl EncoderProfiler<'_> {
 		}
 	}
 
+	/// Finish the profiled encoder.
 	pub fn finish(mut self) -> CommandBuffer {
 		#[cfg(feature = "enable")]
 		self.context.end_zone(&self.device, &mut self.inner);

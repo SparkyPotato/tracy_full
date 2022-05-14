@@ -1,3 +1,5 @@
+//! Allocation profiling.
+
 #[cfg(feature = "allocator_api")]
 use std::alloc::{AllocError, Allocator};
 use std::{
@@ -8,6 +10,7 @@ use std::{
 
 use crate::clamp_callstack_depth;
 
+/// Create an allocator that is tracked by tracy.
 #[cfg(feature = "allocator_api")]
 #[macro_export]
 macro_rules! tracked_allocator {
@@ -20,6 +23,7 @@ macro_rules! tracked_allocator {
 	};
 }
 
+/// A wrapper around an allocator that tracy tracks as a memory pool.
 #[cfg(feature = "allocator_api")]
 pub struct TrackedAllocator<'a, T> {
 	inner: T,
@@ -122,6 +126,8 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 	}
 }
 
+/// A wrapper around an allocator that tracy tracks as a memory pool, that also samples the callstack on every
+/// allocation.
 #[cfg(feature = "allocator_api")]
 pub struct TrackedAllocatorSampled<T> {
 	inner: T,
@@ -258,6 +264,7 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocatorSampled<T> {
 	}
 }
 
+/// A tracked global allocator.
 pub struct GlobalAllocator<T = System> {
 	inner: T,
 }
@@ -312,6 +319,7 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocator<T> {
 	}
 }
 
+/// A tracked global allocator that samples the callstack on every allocation.
 pub struct GlobalAllocatorSampled<T = System> {
 	inner: T,
 	#[cfg(feature = "enable")]

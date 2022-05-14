@@ -2,6 +2,7 @@ use std::{ffi::CStr, marker::PhantomData};
 
 use crate::color::Color;
 
+/// Mark a zone in the current scope.
 #[macro_export]
 macro_rules! zone {
 	() => {
@@ -35,6 +36,7 @@ macro_rules! zone {
 	};
 }
 
+/// Mark a zone in the current scope, sampling the callstack.
 #[macro_export]
 macro_rules! zone_sample {
 	($depth:literal) => {
@@ -66,6 +68,7 @@ macro_rules! zone_sample {
 	};
 }
 
+/// Create a zone.
 #[inline(always)]
 pub fn zone(loc: &'static ZoneLocation, active: bool) -> Zone {
 	#[cfg(feature = "enable")]
@@ -82,6 +85,7 @@ pub fn zone(loc: &'static ZoneLocation, active: bool) -> Zone {
 	}
 }
 
+/// Create a callstack sampled zone.
 #[inline(always)]
 pub fn zone_sample(loc: &'static ZoneLocation, depth: u32, active: bool) -> Zone {
 	#[cfg(feature = "enable")]
@@ -215,9 +219,9 @@ impl ZoneLocation {
 	}
 }
 
+/// Get a `&'static ZoneLocation`.
 #[cfg(all(feature = "enable", feature = "unstable"))]
 #[macro_export]
-/// Get a `&'static ZoneLocation`.
 macro_rules! get_location {
 	() => {{
 		{
