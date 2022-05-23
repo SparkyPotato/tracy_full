@@ -12,6 +12,9 @@
 
 use std::{error::Error, ffi::CString};
 
+#[doc(hidden)]
+pub use once_cell;
+
 pub mod alloc;
 #[cfg(feature = "bevy")]
 pub mod bevy;
