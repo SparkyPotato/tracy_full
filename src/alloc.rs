@@ -271,12 +271,12 @@ pub struct GlobalAllocator<T = System> {
 
 impl GlobalAllocator {
 	#[inline(always)]
-	pub const fn new() -> Self { Self::new_wth(System) }
+	pub const fn new() -> Self { Self::new_with(System) }
 }
 
 impl<T: GlobalAlloc> GlobalAllocator<T> {
 	#[inline(always)]
-	pub const fn new_wth(inner: T) -> Self { Self { inner } }
+	pub const fn new_with(inner: T) -> Self { Self { inner } }
 }
 
 impl Default for GlobalAllocator {

@@ -1,6 +1,6 @@
 [package]
 name = "tracy_full"
-version = "0.8.1"
+version = "1.0.0"
 authors = ["SparkyPotato"]
 license = "MIT"
 edition = "2021"
@@ -29,7 +29,7 @@ bevy = ["bevy_ecs", "futures"]
 # Tracing support.
 tracing = ["dep:tracing", "tracing-subscriber"]
 # WGPU support.
-wgpu = ["dep:wgpu", "wgpu-core", "futures-lite"]
+wgpu = ["dep:wgpu", "futures-lite"]
 
 # Enable the capture of profiling data. Disabled by default.
 enable = ["sys/enable"]

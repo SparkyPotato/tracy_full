@@ -9,7 +9,6 @@ use std::{
 
 use futures_lite::{
 	future::{block_on, poll_once},
-	pin,
 	FutureExt,
 };
 use wgpu::{
@@ -54,6 +53,16 @@ macro_rules! wgpu_render_pass {
 		struct S;
 		let s = std::any::type_name::<S>();
 		$encoder.begin_render_pass(&$desc, line!(), file!(), &s[..s.len() - 3])
+	}};
+}
+
+/// Create a profiled compute pass from a profiled command encoder.
+#[macro_export]
+macro_rules! wgpu_compute_pass {
+	($encoder:expr, $desc:expr) => {{
+		struct S;
+		let s = std::any::type_name::<S>();
+		$encoder.begin_compute_pass(&$desc, line!(), file!(), &s[..s.len() - 3])
 	}};
 }
 
@@ -291,10 +300,7 @@ impl ProfileContext {
 			let frame = &mut self.frames[self.curr_frame];
 			for pool in &mut frame.pools {
 				let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
-				let mapping = slice.map_async(MapMode::Read);
-				pin!(mapping);
-				device.poll(Maintain::Wait);
-				let _ = block_on(mapping);
+				let _ = block_on(poll_once(slice.map_async(MapMode::Read)));
 
 				{
 					let view = slice.get_mapped_range();
