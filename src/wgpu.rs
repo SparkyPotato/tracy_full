@@ -34,7 +34,6 @@ use wgpu::{
 	RenderPassDescriptor,
 	QUERY_SET_MAX_QUERIES,
 };
-use wgpu_core::api::{Dx12, Vulkan};
 
 /// Create a profiled command encoder.
 #[macro_export]
