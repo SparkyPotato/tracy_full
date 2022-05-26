@@ -65,6 +65,6 @@ pub const fn clamp_callstack_depth(depth: u32) -> u32 {
 #[macro_export]
 macro_rules! c_str {
 	($str:literal) => {
-		unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!($str, "\0").as_bytes()) }
+		unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(concat!($str, "\0").as_bytes()) }
 	};
 }

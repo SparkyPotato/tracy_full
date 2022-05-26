@@ -40,7 +40,7 @@ use wgpu::{
 macro_rules! wgpu_command_encoder {
 	($device:expr, $profiler:expr, $desc:expr $(,)?) => {{
 		struct S;
-		let s = std::any::type_name::<S>();
+		let s = ::std::any::type_name::<S>();
 		$profiler.create_command_encoder(&$device, &$desc, line!(), file!(), &s[..s.len() - 3])
 	}};
 }
@@ -50,7 +50,7 @@ macro_rules! wgpu_command_encoder {
 macro_rules! wgpu_render_pass {
 	($encoder:expr, $desc:expr) => {{
 		struct S;
-		let s = std::any::type_name::<S>();
+		let s = ::std::any::type_name::<S>();
 		$encoder.begin_render_pass(&$desc, line!(), file!(), &s[..s.len() - 3])
 	}};
 }
@@ -60,7 +60,7 @@ macro_rules! wgpu_render_pass {
 macro_rules! wgpu_compute_pass {
 	($encoder:expr, $desc:expr) => {{
 		struct S;
-		let s = std::any::type_name::<S>();
+		let s = ::std::any::type_name::<S>();
 		$encoder.begin_compute_pass(&$desc, line!(), file!(), &s[..s.len() - 3])
 	}};
 }
