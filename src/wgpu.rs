@@ -300,6 +300,7 @@ impl ProfileContext {
 			for pool in &mut frame.pools {
 				let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
 				let _ = block_on(poll_once(slice.map_async(MapMode::Read)));
+				device.poll(Maintain::Poll);
 
 				{
 					let view = slice.get_mapped_range();
