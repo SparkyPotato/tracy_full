@@ -400,15 +400,15 @@ macro_rules! get_location {
 #[macro_export]
 macro_rules! get_location {
 	() => {{
-		$crate::zone::ZoneLocation { loc: () }
+		&$crate::zone::ZoneLocation { loc: () }
 	}};
 
 	($name:literal) => {{
-		$crate::zone::ZoneLocation { loc: () }
+		&$crate::zone::ZoneLocation { loc: () }
 	}};
 
 	($color:expr) => {{
-		$crate::zone::ZoneLocation { loc: () }
+		&$crate::zone::ZoneLocation { loc: () }
 	}};
 
 	($name:literal, $color:expr $(,)?) => {{
