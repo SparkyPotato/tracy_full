@@ -35,7 +35,7 @@ wgpu = ["dep:wgpu", "futures-lite"]
 enable = ["sys/enable"]
 # Automatically initialize the Tracy profiler. Enabled by default.
 # Can be disabled if you want to manually control the lifetime of the Tracy profiling.
-auto-init = []
+auto-init = ["ctor"]
 # Enable support for fibers, coroutines, and async/await.
 futures = ["sys/fibers"]
 
@@ -64,7 +64,7 @@ ondemand = ["sys/ondemand"]
 rustc_version = "0.4"
 
 [dependencies]
-ctor = "0.1.22"
+ctor = { version = "0.1.22", optional = true }
 sys = { package = "tracy-client-sys", version = "0.17.0", default-features = false }
 
 bevy_ecs = { version = "0.7", optional = true }
