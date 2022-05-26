@@ -1,6 +1,6 @@
 [package]
 name = "tracy_full"
-version = "1.0.3"
+version = "1.1.0"
 authors = ["SparkyPotato"]
 license = "MIT"
 edition = "2021"
@@ -17,7 +17,7 @@ harness = false
 
 [features]
 # Default features that tracy uses.
-default = ["system-tracing", "context-switch-tracing", "sampling", "code-transfer", "broadcast"]
+default = ["auto-init", "system-tracing", "context-switch-tracing", "sampling", "code-transfer", "broadcast"]
 
 # Enable nightly-only features and optimizations.
 unstable = []
@@ -33,6 +33,9 @@ wgpu = ["dep:wgpu", "futures-lite"]
 
 # Enable the capture of profiling data. Disabled by default.
 enable = ["sys/enable"]
+# Automatically initialize the Tracy profiler. Enabled by default.
+# Can be disabled if you want to manually control the lifetime of the Tracy profiling.
+auto-init = []
 # Enable support for fibers, coroutines, and async/await.
 futures = ["sys/fibers"]
 
