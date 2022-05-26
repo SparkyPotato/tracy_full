@@ -83,7 +83,10 @@ pub fn zone(loc: &'static ZoneLocation, active: bool) -> Zone {
 	}
 
 	#[cfg(not(feature = "enable"))]
-	Zone { ctx: () }
+	Zone {
+		unsend: PhantomData,
+		ctx: (),
+	}
 }
 
 /// Create a callstack sampled zone.
@@ -99,7 +102,10 @@ pub fn zone_sample(loc: &'static ZoneLocation, depth: u32, active: bool) -> Zone
 	}
 
 	#[cfg(not(feature = "enable"))]
-	Zone { ctx: () }
+	Zone {
+		unsend: PhantomData,
+		ctx: (),
+	}
 }
 
 pub struct Zone {
