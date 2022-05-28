@@ -1,6 +1,7 @@
-use std::{any::TypeId, cell::UnsafeCell, num::NonZeroU64};
+use std::{any::TypeId, borrow::Cow, cell::UnsafeCell, num::NonZeroU64};
 
-use tracing::{Id, Subscriber};
+use tracing::{span::Attributes, Id, Subscriber};
+use tracing_subscriber::fmt::{format::DefaultFields, FormatFields, FormattedFields};
 use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
 
 thread_local! {
@@ -15,12 +16,46 @@ where
 	S: Subscriber,
 	S: for<'a> LookupSpan<'a>,
 {
+	fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+		#[cfg(feature = "enable")]
+		{
+			if let Some(span) = ctx.span(id) {
+				let mut extensions = span.extensions_mut();
+
+				if extensions.get_mut::<FormattedFields<DefaultFields>>().is_none() {
+					let mut fields = FormattedFields::<DefaultFields>::new(String::with_capacity(64));
+
+					if DefaultFields::default()
+						.format_fields(fields.as_writer(), attrs)
+						.is_ok()
+					{
+						extensions.insert(fields);
+					}
+				}
+			}
+		}
+	}
+
 	fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
 		#[cfg(feature = "enable")]
 		{
 			let meta = ctx.metadata(id).unwrap();
 			let file = meta.file().unwrap_or("");
 			let module = meta.module_path().unwrap_or("");
+			let name: Cow<str> = if let Some(span_data) = ctx.span(id) {
+				if let Some(fields) = span_data.extensions().get::<FormattedFields<DefaultFields>>() {
+					if fields.fields.as_str().is_empty() {
+						meta.name().into()
+					} else {
+						format!("{}{{{}}}", meta.name(), fields.fields.as_str()).into()
+					}
+				} else {
+					meta.name().into()
+				}
+			} else {
+				meta.name().into()
+			};
+
 			unsafe {
 				let srcloc = sys::___tracy_alloc_srcloc_name(
 					meta.line().unwrap_or(0),
@@ -28,8 +63,8 @@ where
 					file.len(),
 					module.as_ptr() as _,
 					module.len(),
-					meta.name().as_ptr() as _,
-					meta.name().len(),
+					name.as_ptr() as _,
+					name.len(),
 				);
 
 				let ctx = sys::___tracy_emit_zone_begin_alloc(srcloc, 1);
