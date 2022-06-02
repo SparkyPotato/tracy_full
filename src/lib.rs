@@ -39,14 +39,14 @@ unsafe fn shutdown_tracy() { sys::___tracy_shutdown_profiler(); }
 
 /// Initialize the tracy profiler. Must be called before any other Tracy functions.
 #[cfg(not(feature = "auto-init"))]
-unsafe fn startup_tracy() {
+pub unsafe fn startup_tracy() {
 	#[cfg(feature = "enable")]
 	sys::___tracy_startup_profiler();
 }
 
 /// Shutdown the tracy profiler. Any other Tracy functions must not be called after this.
 #[cfg(not(feature = "auto-init"))]
-unsafe fn shutdown_tracy() {
+pub unsafe fn shutdown_tracy() {
 	#[cfg(feature = "enable")]
 	sys::___tracy_shutdown_profiler();
 }
