@@ -81,7 +81,6 @@ fn get_next_context() -> u8 {
 #[cfg(feature = "enable")]
 struct QueryPool {
 	readback: Buffer,
-	mapping: Option<Pin<Box<dyn Future<Output = Result<(), BufferAsyncError>> + Send>>>,
 	query: QuerySet,
 	used_queries: u16,
 	base_query_id: u16,
@@ -99,7 +98,6 @@ impl QueryPool {
 				usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
 				mapped_at_creation: false,
 			}),
-			mapping: None,
 			query: device.create_query_set(&QuerySetDescriptor {
 				label: Some("Tracy Query Set"),
 				ty: QueryType::Timestamp,
@@ -119,7 +117,6 @@ impl QueryPool {
 
 	pub fn reset(&mut self) {
 		self.used_queries = 0;
-		self.mapping = None;
 		self.readback.unmap();
 	}
 }
@@ -167,6 +164,8 @@ pub struct ProfileContext {
 	curr_frame: usize,
 	#[cfg(feature = "enable")]
 	used_query_ids: u16,
+	#[cfg(feature = "enable")]
+	enabled: bool,
 
 	#[cfg(not(feature = "enable"))]
 	_context: (),
@@ -175,6 +174,16 @@ pub struct ProfileContext {
 impl ProfileContext {
 	/// Device needs `Features::TIMESTAMP_QUERY` enabled.
 	pub fn new(adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
+		Self::with_enabled(adapter, device, queue, buffered_frames, true)
+	}
+
+	pub fn with_name(name: &str, adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
+		Self::with_enabled_and_name(name, adapter, device, queue, buffered_frames, true)
+	}
+
+	pub fn with_enabled(
+		adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32, enabled: bool,
+	) -> Self {
 		#[cfg(feature = "enable")]
 		{
 			// We have to make our own struct and transmute it because the bindgened one has a private field for some
@@ -188,54 +197,62 @@ impl ProfileContext {
 			}
 
 			let context = get_next_context();
-			let period = queue.get_timestamp_period();
 
-			let mut frames: Vec<_> = std::iter::repeat_with(|| FrameInFlight::new())
-				.take(buffered_frames as _)
-				.collect();
+			let frames = if enabled {
+				let mut frames: Vec<_> = std::iter::repeat_with(|| FrameInFlight::new())
+					.take(buffered_frames as _)
+					.collect();
 
-			let frame = &mut frames[0];
-			frame.pools.push(QueryPool::new(device, 0));
-			let pool = &mut frame.pools[0];
+				let period = queue.get_timestamp_period();
 
-			let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-				label: Some("initialize profiler"),
-			});
-			encoder.write_timestamp(&pool.query, 0);
-			encoder.resolve_query_set(&pool.query, 0..1, &pool.readback, 0);
-			queue.submit([encoder.finish()]);
-			let slice = pool.readback.slice(0..8);
-			let _ = slice.map_async(MapMode::Read);
-			device.poll(Maintain::Wait);
+				let frame = &mut frames[0];
+				frame.pools.push(QueryPool::new(device, 0));
+				let pool = &mut frame.pools[0];
 
-			let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
-			pool.reset();
+				let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+					label: Some("initialize profiler"),
+				});
+				encoder.write_timestamp(&pool.query, 0);
+				encoder.resolve_query_set(&pool.query, 0..1, &pool.readback, 0);
+				queue.submit([encoder.finish()]);
+				let slice = pool.readback.slice(0..8);
+				let _ = slice.map_async(MapMode::Read);
+				device.poll(Maintain::Wait);
 
-			let mut type_ = match adapter.get_info().backend {
-				Backend::Empty => 0,
-				Backend::Gl => 1,
-				Backend::Vulkan => 2,
-				Backend::Dx12 => 4,
-				Backend::Dx11 => 5,
-				Backend::Metal => 6,
-				Backend::BrowserWebGpu => 7,
+				let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
+				pool.reset();
+
+				let mut type_ = match adapter.get_info().backend {
+					Backend::Empty => 0,
+					Backend::Gl => 1,
+					Backend::Vulkan => 2,
+					Backend::Dx12 => 4,
+					Backend::Dx11 => 5,
+					Backend::Metal => 6,
+					Backend::BrowserWebGpu => 7,
+				};
+
+				unsafe {
+					sys::___tracy_emit_gpu_new_context_serial(std::mem::transmute(ContextData {
+						gpu_time,
+						period,
+						context,
+						flags: 0,
+						type_,
+					}))
+				}
+
+				frames
+			} else {
+				Vec::new()
 			};
-
-			unsafe {
-				sys::___tracy_emit_gpu_new_context_serial(std::mem::transmute(ContextData {
-					gpu_time,
-					period,
-					context,
-					flags: 0,
-					type_,
-				}))
-			}
 
 			Self {
 				context,
 				frames,
 				curr_frame: 0,
 				used_query_ids: QueryPool::QUERY_POOL_SIZE,
+				enabled,
 			}
 		}
 
@@ -245,8 +262,10 @@ impl ProfileContext {
 		}
 	}
 
-	pub fn with_name(name: &str, adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
-		let this = Self::new(adapter, device, queue, buffered_frames);
+	pub fn with_enabled_and_name(
+		name: &str, adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32, enabled: bool,
+	) -> Self {
+		let this = Self::with_enabled(adapter, device, queue, buffered_frames, true);
 
 		#[cfg(feature = "enable")]
 		unsafe {
@@ -285,7 +304,7 @@ impl ProfileContext {
 	/// End a frame, uploading the data to Tracy, while also synchronizing for `buffered_frames` frames.
 	pub fn end_frame(&mut self, device: &Device, queue: &Queue) {
 		#[cfg(feature = "enable")]
-		{
+		if self.enabled {
 			let frame = &mut self.frames[self.curr_frame];
 			let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
 				label: Some("Tracy Query Resolve"),
@@ -329,26 +348,46 @@ impl ProfileContext {
 	fn begin_zone<T: Pass>(
 		&mut self, device: &Device, pass: &mut T, name: Option<&str>, line: u32, file: &str, function: &str,
 	) {
-		unsafe {
-			let srcloc = match name {
-				Some(label) => sys::___tracy_alloc_srcloc_name(
-					line,
-					file.as_ptr() as _,
-					file.len(),
-					function.as_ptr() as _,
-					function.len(),
-					label.as_ptr() as _,
-					label.len(),
-				),
-				None => sys::___tracy_alloc_srcloc(
-					line,
-					file.as_ptr() as _,
-					file.len(),
-					function.as_ptr() as _,
-					function.len(),
-				),
-			};
+		if self.enabled {
+			unsafe {
+				let srcloc = match name {
+					Some(label) => sys::___tracy_alloc_srcloc_name(
+						line,
+						file.as_ptr() as _,
+						file.len(),
+						function.as_ptr() as _,
+						function.len(),
+						label.as_ptr() as _,
+						label.len(),
+					),
+					None => sys::___tracy_alloc_srcloc(
+						line,
+						file.as_ptr() as _,
+						file.len(),
+						function.as_ptr() as _,
+						function.len(),
+					),
+				};
 
+				let frame = &mut self.frames[self.curr_frame];
+				let pool = frame.get_pool(device, &mut self.used_query_ids);
+				let (query_id, need_new_pool) = pool.write_query(pass);
+				if need_new_pool {
+					frame.curr_pool += 1;
+				}
+
+				sys::___tracy_emit_gpu_zone_begin_alloc_serial(sys::___tracy_gpu_zone_begin_data {
+					srcloc,
+					queryId: query_id,
+					context: self.context,
+				});
+			}
+		}
+	}
+
+	#[cfg(feature = "enable")]
+	fn end_zone<T: Pass>(&mut self, device: &Device, pass: &mut T) {
+		if self.enabled {
 			let frame = &mut self.frames[self.curr_frame];
 			let pool = frame.get_pool(device, &mut self.used_query_ids);
 			let (query_id, need_new_pool) = pool.write_query(pass);
@@ -356,28 +395,12 @@ impl ProfileContext {
 				frame.curr_pool += 1;
 			}
 
-			sys::___tracy_emit_gpu_zone_begin_alloc_serial(sys::___tracy_gpu_zone_begin_data {
-				srcloc,
-				queryId: query_id,
-				context: self.context,
-			});
-		}
-	}
-
-	#[cfg(feature = "enable")]
-	fn end_zone<T: Pass>(&mut self, device: &Device, pass: &mut T) {
-		let frame = &mut self.frames[self.curr_frame];
-		let pool = frame.get_pool(device, &mut self.used_query_ids);
-		let (query_id, need_new_pool) = pool.write_query(pass);
-		if need_new_pool {
-			frame.curr_pool += 1;
-		}
-
-		unsafe {
-			sys::___tracy_emit_gpu_zone_end_serial(sys::___tracy_gpu_zone_end_data {
-				queryId: query_id,
-				context: self.context,
-			});
+			unsafe {
+				sys::___tracy_emit_gpu_zone_end_serial(sys::___tracy_gpu_zone_end_data {
+					queryId: query_id,
+					context: self.context,
+				});
+			}
 		}
 	}
 }
