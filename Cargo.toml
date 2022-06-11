@@ -1,6 +1,6 @@
 [package]
 name = "tracy_full"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["SparkyPotato"]
 license = "MIT"
 edition = "2021"

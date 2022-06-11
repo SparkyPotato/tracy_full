@@ -317,29 +317,31 @@ impl ProfileContext {
 			self.curr_frame = (self.curr_frame + 1) % self.frames.len();
 			let frame = &mut self.frames[self.curr_frame];
 			for pool in &mut frame.pools {
-				let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
-				let _ = block_on(poll_once(slice.map_async(MapMode::Read)));
-				device.poll(Maintain::Poll);
+				if pool.used_queries != 0 {
+					let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
+					let _ = block_on(poll_once(slice.map_async(MapMode::Read)));
+					device.poll(Maintain::Poll);
 
-				{
-					let view = slice.get_mapped_range();
-					for i in 0..pool.used_queries {
-						let query_id = pool.base_query_id + i;
-						let view_base = i as usize * 8;
-						let gpu_time = i64::from_le_bytes(view[view_base..view_base + 8].try_into().unwrap());
+					{
+						let view = slice.get_mapped_range();
+						for i in 0..pool.used_queries {
+							let query_id = pool.base_query_id + i;
+							let view_base = i as usize * 8;
+							let gpu_time = i64::from_le_bytes(view[view_base..view_base + 8].try_into().unwrap());
 
-						unsafe {
-							sys::___tracy_emit_gpu_time_serial(sys::___tracy_gpu_time_data {
-								gpuTime: gpu_time,
-								queryId: query_id,
-								context: self.context,
-							});
+							unsafe {
+								sys::___tracy_emit_gpu_time_serial(sys::___tracy_gpu_time_data {
+									gpuTime: gpu_time,
+									queryId: query_id,
+									context: self.context,
+								});
+							}
 						}
 					}
-				}
 
-				pool.used_queries = 0;
-				pool.readback.unmap();
+					pool.used_queries = 0;
+					pool.readback.unmap();
+				}
 			}
 		}
 	}
