@@ -71,7 +71,7 @@ bevy_ecs = { version = "0.7", optional = true }
 futures-lite = { version = "0.1.11", optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", optional = true }
-wgpu = { version = "0.12", optional = true, default-features = false }
+wgpu = { version = "0.13.1", optional = true, default-features = false }
 
 [target.'cfg(not(unstable))'.dependencies]
 once_cell = "1.10.0"
