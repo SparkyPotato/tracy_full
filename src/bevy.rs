@@ -7,7 +7,7 @@ use bevy_ecs::{
 	component::ComponentId,
 	prelude::{SystemLabel, World},
 	query::Access,
-	schedule::SystemDescriptor,
+	schedule::{SystemDescriptor, SystemLabelId},
 	system::{IntoSystem, System},
 };
 
@@ -78,5 +78,14 @@ where
 	fn check_change_tick(&mut self, change_tick: u32) { self.inner.check_change_tick(change_tick) }
 
 	#[inline(always)]
-	fn default_labels(&self) -> Vec<Box<dyn SystemLabel>> { self.inner.default_labels() }
+	fn default_labels(&self) -> Vec<SystemLabelId> { self.inner.default_labels() }
+
+	#[inline(always)]
+	fn is_exclusive(&self) -> bool { self.inner.is_exclusive() }
+
+	#[inline(always)]
+	fn get_last_change_tick(&self) -> u32 { self.inner.get_last_change_tick() }
+
+	#[inline(always)]
+	fn set_last_change_tick(&mut self, x: u32) { self.inner.set_last_change_tick(x) }
 }

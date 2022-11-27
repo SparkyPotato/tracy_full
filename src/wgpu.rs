@@ -186,16 +186,6 @@ impl ProfileContext {
 	) -> Self {
 		#[cfg(feature = "enable")]
 		{
-			// We have to make our own struct and transmute it because the bindgened one has a private field for some
-			// reason.
-			struct ContextData {
-				gpu_time: i64,
-				period: f32,
-				context: u8,
-				flags: u8,
-				type_: u8,
-			}
-
 			let context = get_next_context();
 
 			let frames = if enabled {
@@ -233,13 +223,13 @@ impl ProfileContext {
 				};
 
 				unsafe {
-					sys::___tracy_emit_gpu_new_context_serial(std::mem::transmute(ContextData {
-						gpu_time,
+					sys::___tracy_emit_gpu_new_context_serial(sys::___tracy_gpu_new_context_data {
+						gpuTime: gpu_time,
 						period,
 						context,
 						flags: 0,
 						type_,
-					}))
+					})
 				}
 
 				frames
