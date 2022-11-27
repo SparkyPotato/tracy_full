@@ -165,7 +165,6 @@ tracing::subscriber::set_global_default(
     tracing_subscriber::registry().with(TracyLayer)
 );
 ```
-Extra data on spans are currently unsupported.
 
 ### `wgpu`
 Enable the `wgpu` feature to be able to profile wgpu command encoders and render/compute passes.
