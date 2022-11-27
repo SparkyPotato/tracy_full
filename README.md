@@ -6,7 +6,7 @@ Just add the following to your `Cargo.toml`:
 ```toml
 [dependencies.tracy]
 package = "tracy_full"
-version = "1.0.0"
+version = "1.3.0"
 ```
 
 To enable profiling for a build, add the `enable` feature:
