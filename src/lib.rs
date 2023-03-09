@@ -28,23 +28,15 @@ pub mod tracing;
 pub mod wgpu;
 pub mod zone;
 
-#[cfg(all(feature = "enable", feature = "auto-init"))]
-#[ctor::ctor]
-unsafe fn startup_tracy() { sys::___tracy_startup_profiler(); }
-
-#[cfg(all(feature = "enable", feature = "auto-init"))]
-#[ctor::dtor]
-unsafe fn shutdown_tracy() { sys::___tracy_shutdown_profiler(); }
-
 /// Initialize the tracy profiler. Must be called before any other Tracy functions.
-#[cfg(not(feature = "auto-init"))]
+#[cfg(feature = "manual-init")]
 pub unsafe fn startup_tracy() {
 	#[cfg(feature = "enable")]
 	sys::___tracy_startup_profiler();
 }
 
 /// Shutdown the tracy profiler. Any other Tracy functions must not be called after this.
-#[cfg(not(feature = "auto-init"))]
+#[cfg(feature = "manual-init")]
 pub unsafe fn shutdown_tracy() {
 	#[cfg(feature = "enable")]
 	sys::___tracy_shutdown_profiler();

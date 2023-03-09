@@ -1,13 +1,12 @@
 //! Bevy related profiling.
 
-use std::{borrow::Cow, ffi::CString};
+use std::{any::TypeId, borrow::Cow, ffi::CString};
 
 use bevy_ecs::{
 	archetype::ArchetypeComponentId,
 	component::ComponentId,
-	prelude::{SystemLabel, World},
+	prelude::World,
 	query::Access,
-	schedule::{SystemDescriptor, SystemLabelId},
 	system::{IntoSystem, System},
 };
 
@@ -78,9 +77,6 @@ where
 	fn check_change_tick(&mut self, change_tick: u32) { self.inner.check_change_tick(change_tick) }
 
 	#[inline(always)]
-	fn default_labels(&self) -> Vec<SystemLabelId> { self.inner.default_labels() }
-
-	#[inline(always)]
 	fn is_exclusive(&self) -> bool { self.inner.is_exclusive() }
 
 	#[inline(always)]
@@ -88,4 +84,6 @@ where
 
 	#[inline(always)]
 	fn set_last_change_tick(&mut self, x: u32) { self.inner.set_last_change_tick(x) }
+
+	fn type_id(&self) -> TypeId { self.inner.type_id() }
 }
