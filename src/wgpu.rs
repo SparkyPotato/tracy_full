@@ -95,7 +95,7 @@ impl QueryPool {
 			readback: device.create_buffer(&BufferDescriptor {
 				label: Some("Tracy Readback Buffer"),
 				size: 8 * Self::QUERY_POOL_SIZE as u64,
-				usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
+				usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ | BufferUsages::QUERY_RESOLVE,
 				mapped_at_creation: false,
 			}),
 			query: device.create_query_set(&QuerySetDescriptor {
