@@ -1,8 +1,12 @@
 use std::{any::TypeId, borrow::Cow, cell::UnsafeCell, num::NonZeroU64};
 
 use tracing::{span::Attributes, Id, Subscriber};
-use tracing_subscriber::fmt::{format::DefaultFields, FormatFields, FormattedFields};
-use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
+use tracing_subscriber::{
+	fmt::{format::DefaultFields, FormatFields, FormattedFields},
+	layer::Context,
+	registry::LookupSpan,
+	Layer,
+};
 
 thread_local! {
 	static STACK: UnsafeCell<Vec<u32>> = UnsafeCell::new(Vec::new());
