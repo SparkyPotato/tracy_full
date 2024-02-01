@@ -217,9 +217,8 @@ impl ProfileContext {
 					Backend::Gl => 1,
 					Backend::Vulkan => 2,
 					Backend::Dx12 => 4,
-					Backend::Dx11 => 5,
-					Backend::Metal => 6,
-					Backend::BrowserWebGpu => 7,
+					Backend::Metal => 5,
+					Backend::BrowserWebGpu => 6,
 				};
 
 				unsafe {
@@ -514,3 +513,4 @@ impl Pass for RenderPass<'_> {
 impl Pass for ComputePass<'_> {
 	fn write_timestamp(&mut self, set: &QuerySet, index: u32) { self.write_timestamp(set, index); }
 }
+
