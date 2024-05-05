@@ -4,7 +4,6 @@
 #![allow(unused_mut)]
 #![allow(unused_variables)]
 #![cfg_attr(feature = "allocator_api", feature(allocator_api))]
-#![cfg_attr(feature = "allocator_api", feature(slice_ptr_len))]
 #![cfg_attr(feature = "unstable", feature(const_intrinsic_copy))]
 #![cfg_attr(feature = "unstable", feature(const_mut_refs))]
 #![cfg_attr(feature = "unstable", feature(const_type_name))]

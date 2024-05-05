@@ -79,9 +79,12 @@ where
 
 	fn type_id(&self) -> TypeId { self.inner.type_id() }
 
+	fn has_deferred(&self) -> bool { self.inner.has_deferred() }
+
 	fn apply_deferred(&mut self, world: &mut World) { self.inner.apply_deferred(world) }
 
 	fn get_last_run(&self) -> Tick { self.inner.get_last_run() }
 
 	fn set_last_run(&mut self, last_run: Tick) { self.inner.set_last_run(last_run) }
 }
+
