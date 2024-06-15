@@ -202,4 +202,4 @@ At the end of each frame, you must call `end_frame`:
 ```rust
 profile_context.end_frame(&device, &queue);
 ```
-This uploads the profiling data to the Tracy.
+This uploads the profiling data to Tracy.
