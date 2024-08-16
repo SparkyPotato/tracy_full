@@ -32,6 +32,7 @@ use wgpu::{
 	Queue,
 	RenderPass,
 	RenderPassDescriptor,
+	SubmissionIndex,
 	QUERY_SET_MAX_QUERIES,
 };
 
@@ -132,6 +133,7 @@ impl QueryPool {
 struct FrameInFlight {
 	pools: Vec<QueryPool>,
 	curr_pool: usize,
+	map_submission: Option<SubmissionIndex>,
 }
 
 #[cfg(feature = "enable")]
@@ -140,6 +142,7 @@ impl FrameInFlight {
 		Self {
 			pools: Vec::new(),
 			curr_pool: 0,
+			map_submission: None,
 		}
 	}
 
@@ -312,14 +315,22 @@ impl ProfileContext {
 			}
 			queue.submit([encoder.finish()]);
 
+			for pool in &mut frame.pools {
+				let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
+				slice.map_async(MapMode::Read, |_| {});
+			}
+			frame.map_submission = Some(queue.submit([]));
+
 			self.curr_frame = (self.curr_frame + 1) % self.frames.len();
 			let frame = &mut self.frames[self.curr_frame];
+
+			if let Some(map_submission) = &frame.map_submission {
+				device.poll(Maintain::WaitForSubmissionIndex(map_submission.to_owned()));
+			}
+
 			for pool in &mut frame.pools {
 				if pool.used_queries != 0 {
 					let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
-					slice.map_async(MapMode::Read, |_| {});
-					device.poll(Maintain::Wait);
-
 					{
 						let view = slice.get_mapped_range();
 						for i in 0..pool.used_queries {
