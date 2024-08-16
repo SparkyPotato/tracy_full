@@ -350,6 +350,7 @@ impl ProfileContext {
 						function.len(),
 						label.as_ptr() as _,
 						label.len(),
+						0,
 					),
 					None => sys::___tracy_alloc_srcloc(
 						line,
@@ -357,6 +358,7 @@ impl ProfileContext {
 						file.len(),
 						function.as_ptr() as _,
 						function.len(),
+						0,
 					),
 				};
 
