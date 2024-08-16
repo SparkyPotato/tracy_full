@@ -80,6 +80,7 @@ fn get_next_context() -> u8 {
 
 #[cfg(feature = "enable")]
 struct QueryPool {
+	resolve: Buffer,
 	readback: Buffer,
 	query: QuerySet,
 	used_queries: u16,
@@ -92,10 +93,16 @@ impl QueryPool {
 
 	pub fn new(device: &Device, base_query_id: u16) -> Self {
 		Self {
+			resolve: device.create_buffer(&BufferDescriptor {
+				label: Some("Tracy Resolve Buffer"),
+				size: 8 * Self::QUERY_POOL_SIZE as u64,
+				usage: BufferUsages::COPY_SRC | BufferUsages::QUERY_RESOLVE,
+				mapped_at_creation: false,
+			}),
 			readback: device.create_buffer(&BufferDescriptor {
 				label: Some("Tracy Readback Buffer"),
 				size: 8 * Self::QUERY_POOL_SIZE as u64,
-				usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ | BufferUsages::QUERY_RESOLVE,
+				usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
 				mapped_at_creation: false,
 			}),
 			query: device.create_query_set(&QuerySetDescriptor {
@@ -203,10 +210,11 @@ impl ProfileContext {
 					label: Some("initialize profiler"),
 				});
 				encoder.write_timestamp(&pool.query, 0);
-				encoder.resolve_query_set(&pool.query, 0..1, &pool.readback, 0);
+				encoder.resolve_query_set(&pool.query, 0..1, &pool.resolve, 0);
+				encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, pool.resolve.size());
 				queue.submit([encoder.finish()]);
 				let slice = pool.readback.slice(0..8);
-				let _ = slice.map_async(MapMode::Read, |_| {});
+				slice.map_async(MapMode::Read, |_| {});
 				device.poll(Maintain::Wait);
 
 				let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
@@ -299,7 +307,8 @@ impl ProfileContext {
 				label: Some("Tracy Query Resolve"),
 			});
 			for pool in &mut frame.pools {
-				encoder.resolve_query_set(&pool.query, 0..(pool.used_queries as u32), &pool.readback, 0);
+				encoder.resolve_query_set(&pool.query, 0..(pool.used_queries as u32), &pool.resolve, 0);
+				encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, pool.resolve.size());
 			}
 			queue.submit([encoder.finish()]);
 
@@ -308,7 +317,7 @@ impl ProfileContext {
 			for pool in &mut frame.pools {
 				if pool.used_queries != 0 {
 					let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
-					let _ = slice.map_async(MapMode::Read, |_| {});
+					slice.map_async(MapMode::Read, |_| {});
 					device.poll(Maintain::Wait);
 
 					{
@@ -440,7 +449,7 @@ pub struct EncoderProfiler<'a> {
 impl EncoderProfiler<'_> {
 	/// Begin a profiled render pass.
 	pub fn begin_render_pass<'a>(
-		&'a mut self, desc: &RenderPassDescriptor<'a, '_>, line: u32, file: &str, function: &str,
+		&'a mut self, desc: &RenderPassDescriptor<'a>, line: u32, file: &str, function: &str,
 	) -> PassProfiler<'a, RenderPass> {
 		#[cfg(feature = "enable")]
 		{
