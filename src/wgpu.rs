@@ -258,7 +258,7 @@ impl ProfileContext {
 
 		#[cfg(feature = "enable")]
 		unsafe {
-			sys::___tracy_emit_gpu_context_name(sys::___tracy_gpu_context_name_data {
+			sys::___tracy_emit_gpu_context_name_serial(sys::___tracy_gpu_context_name_data {
 				context: this.context,
 				name: name.as_ptr() as _,
 				len: name.len() as _,
@@ -350,6 +350,7 @@ impl ProfileContext {
 						function.len(),
 						label.as_ptr() as _,
 						label.len(),
+						0,
 					),
 					None => sys::___tracy_alloc_srcloc(
 						line,
@@ -357,6 +358,7 @@ impl ProfileContext {
 						file.len(),
 						function.as_ptr() as _,
 						function.len(),
+						0,
 					),
 				};
 
