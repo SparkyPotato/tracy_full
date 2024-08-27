@@ -214,7 +214,7 @@ impl ProfileContext {
 				});
 				encoder.write_timestamp(&pool.query, 0);
 				encoder.resolve_query_set(&pool.query, 0..1, &pool.resolve, 0);
-				encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, pool.resolve.size());
+				encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, 8);
 				queue.submit([encoder.finish()]);
 				let slice = pool.readback.slice(0..8);
 				slice.map_async(MapMode::Read, |_| {});
@@ -311,7 +311,7 @@ impl ProfileContext {
 			});
 			for pool in &mut frame.pools {
 				encoder.resolve_query_set(&pool.query, 0..(pool.used_queries as u32), &pool.resolve, 0);
-				encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, pool.resolve.size());
+				encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, pool.used_queries as u64 * 8);
 			}
 			queue.submit([encoder.finish()]);
 
