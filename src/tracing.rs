@@ -69,6 +69,7 @@ where
 					module.len(),
 					name.as_ptr() as _,
 					name.len(),
+					0,
 				);
 
 				let ctx = sys::___tracy_emit_zone_begin_alloc(srcloc, 1);
