@@ -1,10 +1,11 @@
 use std::{
 	future::Future,
 	marker::PhantomData,
-	mem::ManuallyDrop,
+	mem::{ManuallyDrop, MaybeUninit},
 	ops::{Deref, DerefMut},
 	pin::Pin,
 	sync::atomic::{AtomicU8, Ordering},
+	time::{Duration, Instant},
 };
 
 use futures_lite::{
@@ -92,8 +93,8 @@ struct QueryPool {
 impl QueryPool {
 	const QUERY_POOL_SIZE: u16 = 128;
 
-	pub fn new(device: &Device, base_query_id: u16) -> Self {
-		Self {
+	pub fn new(device: &Device, allocated_query_ids: &mut u16) -> Self {
+		let ret = Self {
 			resolve: device.create_buffer(&BufferDescriptor {
 				label: Some("Tracy Resolve Buffer"),
 				size: 8 * Self::QUERY_POOL_SIZE as u64,
@@ -112,8 +113,10 @@ impl QueryPool {
 				count: Self::QUERY_POOL_SIZE as _,
 			}),
 			used_queries: 0,
-			base_query_id,
-		}
+			base_query_id: *allocated_query_ids,
+		};
+		*allocated_query_ids += Self::QUERY_POOL_SIZE;
+		ret
 	}
 
 	pub fn write_query<T: Pass>(&mut self, pass: &mut T) -> (u16, bool) {
@@ -146,21 +149,12 @@ impl FrameInFlight {
 		}
 	}
 
-	fn get_pool(&mut self, device: &Device, used_query_ids: &mut u16) -> &mut QueryPool {
-		let idx = self
-			.pools
-			.iter()
-			.enumerate()
-			.nth(self.curr_pool)
-			.map(|(i, _)| i)
-			.unwrap_or_else(|| {
-				let pool = QueryPool::new(device, *used_query_ids);
-				self.pools.push(pool);
-				*used_query_ids += QueryPool::QUERY_POOL_SIZE;
-				self.pools.len() - 1
-			});
+	fn get_pool(&mut self, device: &Device, allocated_query_ids: &mut u16) -> &mut QueryPool {
+		if self.pools.len() == self.curr_pool {
+			self.pools.push(QueryPool::new(device, allocated_query_ids));
+		}
 
-		&mut self.pools[idx]
+		&mut self.pools[self.curr_pool]
 	}
 }
 
@@ -173,9 +167,13 @@ pub struct ProfileContext {
 	#[cfg(feature = "enable")]
 	curr_frame: usize,
 	#[cfg(feature = "enable")]
-	used_query_ids: u16,
+	allocated_query_ids: u16,
 	#[cfg(feature = "enable")]
 	enabled: bool,
+	#[cfg(feature = "enable")]
+	last_sync: Instant,
+	#[cfg(feature = "enable")]
+	resync_interval: Duration,
 
 	#[cfg(not(feature = "enable"))]
 	_context: (),
@@ -183,20 +181,28 @@ pub struct ProfileContext {
 
 impl ProfileContext {
 	/// Device needs `Features::TIMESTAMP_QUERY` enabled.
-	pub fn new(adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
-		Self::with_enabled(adapter, device, queue, buffered_frames, true)
+	/// `buffered_frames` is the number of frames to buffer before uploading the data to Tracy.
+	/// `resync_interval` is the interval at which to force a full CPU-GPU sync to prevent drift.
+	pub fn new(
+		adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32, resync_interval: Duration,
+	) -> Self {
+		Self::with_enabled(adapter, device, queue, buffered_frames, resync_interval, true)
 	}
 
-	pub fn with_name(name: &str, adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32) -> Self {
-		Self::with_enabled_and_name(name, adapter, device, queue, buffered_frames, true)
+	pub fn with_name(
+		name: &str, adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32, resync_interval: Duration,
+	) -> Self {
+		Self::with_enabled_and_name(name, adapter, device, queue, buffered_frames, resync_interval, true)
 	}
 
 	pub fn with_enabled(
-		adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32, enabled: bool,
+		adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32, resync_interval: Duration,
+		enabled: bool,
 	) -> Self {
 		#[cfg(feature = "enable")]
 		{
 			let context = get_next_context();
+			let mut allocated_query_ids = 0;
 
 			let frames = if enabled {
 				let mut frames: Vec<_> = std::iter::repeat_with(|| FrameInFlight::new())
@@ -204,24 +210,7 @@ impl ProfileContext {
 					.collect();
 
 				let period = queue.get_timestamp_period();
-
-				let frame = &mut frames[0];
-				frame.pools.push(QueryPool::new(device, 0));
-				let pool = &mut frame.pools[0];
-
-				let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-					label: Some("initialize profiler"),
-				});
-				encoder.write_timestamp(&pool.query, 0);
-				encoder.resolve_query_set(&pool.query, 0..1, &pool.resolve, 0);
-				encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, 8);
-				queue.submit([encoder.finish()]);
-				let slice = pool.readback.slice(0..8);
-				slice.map_async(MapMode::Read, |_| {});
-				device.poll(Maintain::Wait);
-
-				let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
-				pool.reset();
+				let gpu_time = Self::sync_frame(&mut allocated_query_ids, &mut frames[0], device, queue);
 
 				let mut type_ = match adapter.get_info().backend {
 					Backend::Empty => 0,
@@ -239,7 +228,7 @@ impl ProfileContext {
 						context,
 						flags: 0,
 						type_,
-					})
+					});
 				}
 
 				frames
@@ -251,8 +240,10 @@ impl ProfileContext {
 				context,
 				frames,
 				curr_frame: 0,
-				used_query_ids: QueryPool::QUERY_POOL_SIZE,
 				enabled,
+				allocated_query_ids,
+				last_sync: Instant::now() - resync_interval,
+				resync_interval,
 			}
 		}
 
@@ -263,9 +254,10 @@ impl ProfileContext {
 	}
 
 	pub fn with_enabled_and_name(
-		name: &str, adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32, enabled: bool,
+		name: &str, adapter: &Adapter, device: &Device, queue: &Queue, buffered_frames: u32, resync_interval: Duration,
+		enabled: bool,
 	) -> Self {
-		let this = Self::with_enabled(adapter, device, queue, buffered_frames, true);
+		let this = Self::with_enabled(adapter, device, queue, buffered_frames, resync_interval, true);
 
 		#[cfg(feature = "enable")]
 		unsafe {
@@ -305,53 +297,104 @@ impl ProfileContext {
 	pub fn end_frame(&mut self, device: &Device, queue: &Queue) {
 		#[cfg(feature = "enable")]
 		if self.enabled {
-			let frame = &mut self.frames[self.curr_frame];
-			let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-				label: Some("Tracy Query Resolve"),
-			});
-			for pool in &mut frame.pools {
-				encoder.resolve_query_set(&pool.query, 0..(pool.used_queries as u32), &pool.resolve, 0);
-				encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, pool.used_queries as u64 * 8);
+			Self::resolve_frame(&mut self.frames[self.curr_frame], device, queue);
+			if self.last_sync.elapsed() >= self.resync_interval {
+				// Force a full sync to prevent drift.
+				for _ in 0..self.frames.len() {
+					self.curr_frame = (self.curr_frame + 1) % self.frames.len();
+					Self::readback_frame(self.context, &mut self.frames[self.curr_frame], device);
+				}
+
+				let gpu_time = Self::sync_frame(&mut self.allocated_query_ids, &mut self.frames[0], device, queue);
+				unsafe {
+					sys::___tracy_emit_gpu_time_sync_serial(sys::___tracy_gpu_time_sync_data {
+						gpuTime: gpu_time,
+						context: self.context,
+					});
+				}
+
+				self.curr_frame = 0;
+				self.last_sync = Instant::now();
+			} else {
+				self.curr_frame = (self.curr_frame + 1) % self.frames.len();
+				Self::readback_frame(self.context, &mut self.frames[self.curr_frame], device);
 			}
-			queue.submit([encoder.finish()]);
+		}
+	}
 
-			for pool in &mut frame.pools {
-				let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
-				slice.map_async(MapMode::Read, |_| {});
+	#[cfg(feature = "enable")]
+	fn sync_frame(allocated_query_ids: &mut u16, frame: &mut FrameInFlight, device: &Device, queue: &Queue) -> i64 {
+		let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+			label: Some("Initialize Profiler"),
+		});
+		let pool = frame.get_pool(device, allocated_query_ids);
+		encoder.write_timestamp(&pool.query, 0);
+		encoder.resolve_query_set(&pool.query, 0..1, &pool.resolve, 0);
+		encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, 8);
+		queue.submit([encoder.finish()]);
+		let slice = pool.readback.slice(0..8);
+		slice.map_async(MapMode::Read, |_| {});
+		device.poll(Maintain::Wait);
+
+		let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
+		pool.reset();
+		gpu_time
+	}
+
+	#[cfg(feature = "enable")]
+	fn resolve_frame(frame: &mut FrameInFlight, device: &Device, queue: &Queue) {
+		let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+			label: Some("Tracy Query Resolve"),
+		});
+		for pool in &mut frame.pools {
+			if pool.used_queries == 0 {
+				break;
 			}
-			frame.map_submission = Some(queue.submit([]));
 
-			self.curr_frame = (self.curr_frame + 1) % self.frames.len();
-			let frame = &mut self.frames[self.curr_frame];
-
-			if let Some(map_submission) = &frame.map_submission {
-				device.poll(Maintain::WaitForSubmissionIndex(map_submission.to_owned()));
+			encoder.resolve_query_set(&pool.query, 0..(pool.used_queries as u32), &pool.resolve, 0);
+			encoder.copy_buffer_to_buffer(&pool.resolve, 0, &pool.readback, 0, pool.used_queries as u64 * 8);
+		}
+		frame.map_submission = Some(queue.submit([encoder.finish()]));
+		for pool in &mut frame.pools {
+			if pool.used_queries == 0 {
+				break;
 			}
 
-			for pool in &mut frame.pools {
-				if pool.used_queries != 0 {
-					let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
-					{
-						let view = slice.get_mapped_range();
-						for i in 0..pool.used_queries {
-							let query_id = pool.base_query_id + i;
-							let view_base = i as usize * 8;
-							let gpu_time = i64::from_le_bytes(view[view_base..view_base + 8].try_into().unwrap());
+			let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
+			slice.map_async(MapMode::Read, |_| {});
+		}
+	}
 
-							unsafe {
-								sys::___tracy_emit_gpu_time_serial(sys::___tracy_gpu_time_data {
-									gpuTime: gpu_time,
-									queryId: query_id,
-									context: self.context,
-								});
-							}
-						}
+	#[cfg(feature = "enable")]
+	fn readback_frame(context: u8, frame: &mut FrameInFlight, device: &Device) {
+		if let Some(map_submission) = &frame.map_submission {
+			device.poll(Maintain::WaitForSubmissionIndex(map_submission.to_owned()));
+		}
+
+		for pool in &mut frame.pools {
+			if pool.used_queries == 0 {
+				break;
+			}
+
+			let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
+			{
+				let view = slice.get_mapped_range();
+				for i in 0..pool.used_queries {
+					let query_id = pool.base_query_id + i;
+					let view_base = i as usize * 8;
+					let gpu_time = i64::from_le_bytes(view[view_base..view_base + 8].try_into().unwrap());
+
+					unsafe {
+						sys::___tracy_emit_gpu_time_serial(sys::___tracy_gpu_time_data {
+							gpuTime: gpu_time,
+							queryId: query_id,
+							context,
+						});
 					}
-
-					pool.used_queries = 0;
-					pool.readback.unmap();
 				}
 			}
+
+			pool.reset();
 		}
 	}
 
@@ -383,7 +426,7 @@ impl ProfileContext {
 				};
 
 				let frame = &mut self.frames[self.curr_frame];
-				let pool = frame.get_pool(device, &mut self.used_query_ids);
+				let pool = frame.get_pool(device, &mut self.allocated_query_ids);
 				let (query_id, need_new_pool) = pool.write_query(pass);
 				if need_new_pool {
 					frame.curr_pool += 1;
@@ -402,7 +445,7 @@ impl ProfileContext {
 	fn end_zone<T: Pass>(&mut self, device: &Device, pass: &mut T) {
 		if self.enabled {
 			let frame = &mut self.frames[self.curr_frame];
-			let pool = frame.get_pool(device, &mut self.used_query_ids);
+			let pool = frame.get_pool(device, &mut self.allocated_query_ids);
 			let (query_id, need_new_pool) = pool.write_query(pass);
 			if need_new_pool {
 				frame.curr_pool += 1;
@@ -419,7 +462,11 @@ impl ProfileContext {
 }
 
 pub trait Pass {
+	type This<'a>: Pass;
+
 	fn write_timestamp(&mut self, set: &QuerySet, index: u32);
+
+	fn forget_lifetime(self) -> Self::This<'static>;
 }
 
 pub struct PassProfiler<'a, T: Pass> {
@@ -449,6 +496,25 @@ impl<T: Pass> DerefMut for PassProfiler<'_, T> {
 	fn deref_mut(&mut self) -> &mut Self::Target { &mut self.inner }
 }
 
+impl<'a, T: Pass> PassProfiler<'a, T> {
+	pub fn forget_lifetime(self) -> PassProfiler<'a, T::This<'static>> {
+		let mut m = MaybeUninit::new(self);
+		let m = m.as_mut_ptr();
+
+		unsafe {
+			PassProfiler {
+				inner: (&raw mut (*m).inner).read().forget_lifetime(),
+				#[cfg(feature = "enable")]
+				context: (&raw mut (*m).context).read(),
+				#[cfg(feature = "enable")]
+				device: (&raw mut (*m).device).read(),
+				#[cfg(not(feature = "enable"))]
+				context: PhantomData,
+			}
+		}
+	}
+}
+
 pub struct EncoderProfiler<'a> {
 	inner: CommandEncoder,
 	#[cfg(feature = "enable")]
@@ -462,8 +528,8 @@ pub struct EncoderProfiler<'a> {
 impl EncoderProfiler<'_> {
 	/// Begin a profiled render pass.
 	pub fn begin_render_pass<'a>(
-		&'a mut self, desc: &RenderPassDescriptor<'a>, line: u32, file: &str, function: &str,
-	) -> PassProfiler<'a, RenderPass> {
+		&'a mut self, desc: &RenderPassDescriptor<'_>, line: u32, file: &str, function: &str,
+	) -> PassProfiler<'a, RenderPass<'a>> {
 		#[cfg(feature = "enable")]
 		{
 			let mut inner = self.inner.begin_render_pass(desc);
@@ -485,8 +551,8 @@ impl EncoderProfiler<'_> {
 
 	/// Begin a profiled compute pass.
 	pub fn begin_compute_pass<'a>(
-		&'a mut self, desc: &ComputePassDescriptor<'a>, line: u32, file: &str, function: &str,
-	) -> PassProfiler<'a, ComputePass> {
+		&'a mut self, desc: &ComputePassDescriptor<'_>, line: u32, file: &str, function: &str,
+	) -> PassProfiler<'a, ComputePass<'a>> {
 		#[cfg(feature = "enable")]
 		{
 			let mut inner = self.inner.begin_compute_pass(desc);
@@ -525,14 +591,25 @@ impl DerefMut for EncoderProfiler<'_> {
 }
 
 impl Pass for CommandEncoder {
+	type This<'a> = CommandEncoder;
+
 	fn write_timestamp(&mut self, set: &QuerySet, index: u32) { self.write_timestamp(set, index); }
+
+	fn forget_lifetime(self) -> Self::This<'static> { self }
 }
 
 impl Pass for RenderPass<'_> {
+	type This<'a> = RenderPass<'a>;
+
 	fn write_timestamp(&mut self, set: &QuerySet, index: u32) { self.write_timestamp(set, index); }
+
+	fn forget_lifetime(self) -> Self::This<'static> { self.forget_lifetime() }
 }
 
 impl Pass for ComputePass<'_> {
-	fn write_timestamp(&mut self, set: &QuerySet, index: u32) { self.write_timestamp(set, index); }
-}
+	type This<'a> = ComputePass<'a>;
 
+	fn write_timestamp(&mut self, set: &QuerySet, index: u32) { self.write_timestamp(set, index); }
+
+	fn forget_lifetime(self) -> Self::This<'static> { self.forget_lifetime() }
+}

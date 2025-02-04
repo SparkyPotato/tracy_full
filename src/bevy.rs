@@ -7,13 +7,13 @@ use bevy_ecs::{
 	component::{ComponentId, Tick},
 	prelude::World,
 	query::Access,
-	system::{IntoSystem, System},
-	world::unsafe_world_cell::UnsafeWorldCell,
+	system::{IntoSystem, System, SystemInput},
+	world::{unsafe_world_cell::UnsafeWorldCell, DeferredWorld},
 };
 
 /// Create a system that appears as a separate fiber in the profiler.
 #[inline(always)]
-pub fn timeline<In, Out, Params, T: IntoSystem<In, Out, Params>>(sys: T) -> SystemWrapper<T::System> {
+pub fn timeline<In: SystemInput, Out, Params, T: IntoSystem<In, Out, Params>>(sys: T) -> SystemWrapper<T::System> {
 	let sys = T::into_system(sys);
 	SystemWrapper {
 		name: CString::new::<Vec<u8>>(match sys.name() {
@@ -31,7 +31,7 @@ pub struct SystemWrapper<T> {
 	name: CString,
 }
 
-impl<T, In, Out> System for SystemWrapper<T>
+impl<T, In: SystemInput, Out> System for SystemWrapper<T>
 where
 	T: System<In = In, Out = Out>,
 {
@@ -51,7 +51,7 @@ where
 	fn is_send(&self) -> bool { self.inner.is_send() }
 
 	#[inline(always)]
-	unsafe fn run_unsafe(&mut self, input: Self::In, world: UnsafeWorldCell) -> Self::Out {
+	unsafe fn run_unsafe(&mut self, input: <Self::In as SystemInput>::Inner<'_>, world: UnsafeWorldCell) -> Self::Out {
 		#[cfg(feature = "enable")]
 		sys::___tracy_fiber_enter(self.name.as_ptr());
 		let out = self.inner.run_unsafe(input, world);
@@ -61,7 +61,9 @@ where
 	}
 
 	#[inline(always)]
-	fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out { self.inner.run(input, world) }
+	fn run(&mut self, input: <Self::In as SystemInput>::Inner<'_>, world: &mut World) -> Self::Out {
+		self.inner.run(input, world)
+	}
 
 	#[inline(always)]
 	fn initialize(&mut self, _world: &mut World) { self.inner.initialize(_world) }
@@ -86,5 +88,10 @@ where
 	fn get_last_run(&self) -> Tick { self.inner.get_last_run() }
 
 	fn set_last_run(&mut self, last_run: Tick) { self.inner.set_last_run(last_run) }
-}
 
+	fn queue_deferred(&mut self, world: DeferredWorld) { self.inner.queue_deferred(world) }
+
+	unsafe fn validate_param_unsafe(&mut self, world: UnsafeWorldCell) -> bool {
+		self.inner.validate_param_unsafe(world)
+	}
+}

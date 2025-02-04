@@ -4,8 +4,6 @@
 #![allow(unused_mut)]
 #![allow(unused_variables)]
 #![cfg_attr(feature = "allocator_api", feature(allocator_api))]
-#![cfg_attr(feature = "unstable", feature(const_intrinsic_copy))]
-#![cfg_attr(feature = "unstable", feature(const_mut_refs))]
 #![cfg_attr(feature = "unstable", feature(const_type_name))]
 #![cfg_attr(feature = "unstable", feature(generic_const_exprs))]
 
@@ -73,4 +71,3 @@ macro_rules! c_str {
 		unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(concat!($str, "\0").as_bytes()) }
 	};
 }
-

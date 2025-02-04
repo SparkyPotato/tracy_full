@@ -43,18 +43,17 @@ where
 	fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
 		#[cfg(feature = "enable")]
 		{
-			let meta = ctx.metadata(id).unwrap();
+			let Some(span) = ctx.span(id) else {
+				return;
+			};
+			let meta = span.metadata();
 			let file = meta.file().unwrap_or("");
 			let module = meta.module_path().unwrap_or("");
-			let name: Cow<str> = if let Some(span_data) = ctx.span(id) {
-				if let Some(fields) = span_data.extensions().get::<FormattedFields<DefaultFields>>() {
-					if fields.fields.as_str().is_empty() {
-						meta.name().into()
-					} else {
-						format!("{}{{{}}}", meta.name(), fields.fields.as_str()).into()
-					}
-				} else {
+			let name: Cow<str> = if let Some(fields) = span.extensions().get::<FormattedFields<DefaultFields>>() {
+				if fields.fields.as_str().is_empty() {
 					meta.name().into()
+				} else {
+					format!("{}{{{}}}", meta.name(), fields.fields.as_str()).into()
 				}
 			} else {
 				meta.name().into()
