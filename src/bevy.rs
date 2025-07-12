@@ -7,7 +7,7 @@ use bevy_ecs::{
 	component::{ComponentId, Tick},
 	prelude::World,
 	query::Access,
-	system::{IntoSystem, System, SystemInput},
+	system::{IntoSystem, System, SystemInput, SystemParamValidationError},
 	world::{unsafe_world_cell::UnsafeWorldCell, DeferredWorld},
 };
 
@@ -91,7 +91,7 @@ where
 
 	fn queue_deferred(&mut self, world: DeferredWorld) { self.inner.queue_deferred(world) }
 
-	unsafe fn validate_param_unsafe(&mut self, world: UnsafeWorldCell) -> bool {
+	unsafe fn validate_param_unsafe(&mut self, world: UnsafeWorldCell) -> Result<(), SystemParamValidationError> {
 		self.inner.validate_param_unsafe(world)
 	}
 }

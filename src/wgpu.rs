@@ -13,6 +13,7 @@ use futures_lite::{
 	FutureExt,
 };
 use wgpu::{
+	wgt::PollType,
 	Adapter,
 	Backend,
 	Buffer,
@@ -25,7 +26,6 @@ use wgpu::{
 	ComputePass,
 	ComputePassDescriptor,
 	Device,
-	Maintain,
 	MapMode,
 	QuerySet,
 	QuerySetDescriptor,
@@ -213,7 +213,7 @@ impl ProfileContext {
 				let gpu_time = Self::sync_frame(&mut allocated_query_ids, &mut frames[0], device, queue);
 
 				let mut type_ = match adapter.get_info().backend {
-					Backend::Empty => 0,
+					Backend::Noop => 0,
 					Backend::Gl => 1,
 					Backend::Vulkan => 2,
 					Backend::Dx12 => 4,
@@ -334,7 +334,7 @@ impl ProfileContext {
 		queue.submit([encoder.finish()]);
 		let slice = pool.readback.slice(0..8);
 		slice.map_async(MapMode::Read, |_| {});
-		device.poll(Maintain::Wait);
+		let _ = device.poll(PollType::Wait);
 
 		let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
 		pool.reset();
@@ -368,7 +368,7 @@ impl ProfileContext {
 	#[cfg(feature = "enable")]
 	fn readback_frame(context: u8, frame: &mut FrameInFlight, device: &Device) {
 		if let Some(map_submission) = &frame.map_submission {
-			device.poll(Maintain::WaitForSubmissionIndex(map_submission.to_owned()));
+			let _ = device.poll(PollType::WaitForSubmissionIndex(map_submission.to_owned()));
 		}
 
 		for pool in &mut frame.pools {

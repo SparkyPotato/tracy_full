@@ -129,8 +129,6 @@ impl Drop for Zone {
 #[doc(hidden)]
 #[cfg(feature = "unstable")]
 pub const fn get_function_name_from_local_type<T, const TY: usize>() -> [u8; std::any::type_name::<T>().len() - (TY + 1)]
-where
-	[(); std::any::type_name::<T>().len() - (TY + 1)]:,
 {
 	let mut name = [0; std::any::type_name::<T>().len() - (TY + 1)];
 	unsafe {
