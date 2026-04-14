@@ -334,7 +334,7 @@ impl ProfileContext {
 		queue.submit([encoder.finish()]);
 		let slice = pool.readback.slice(0..8);
 		slice.map_async(MapMode::Read, |_| {});
-		let _ = device.poll(PollType::Wait);
+		let _ = device.poll(PollType::wait_indefinitely());
 
 		let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
 		pool.reset();
@@ -368,7 +368,10 @@ impl ProfileContext {
 	#[cfg(feature = "enable")]
 	fn readback_frame(context: u8, frame: &mut FrameInFlight, device: &Device) {
 		if let Some(map_submission) = &frame.map_submission {
-			let _ = device.poll(PollType::WaitForSubmissionIndex(map_submission.to_owned()));
+			let _ = device.poll(PollType::Wait {
+				submission_index: Some(map_submission.to_owned()),
+				timeout: None,
+			});
 		}
 
 		for pool in &mut frame.pools {

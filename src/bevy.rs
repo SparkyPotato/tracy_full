@@ -3,24 +3,21 @@
 use std::{any::TypeId, borrow::Cow, ffi::CString};
 
 use bevy_ecs::{
-	archetype::ArchetypeComponentId,
-	component::{ComponentId, Tick},
+	change_detection::{CheckChangeTicks, Tick},
+	component::ComponentId,
 	prelude::World,
-	query::Access,
-	system::{IntoSystem, System, SystemInput, SystemParamValidationError},
+	query::{Access, FilteredAccessSet},
+	system::{IntoSystem, RunSystemError, System, SystemInput, SystemParamValidationError, SystemStateFlags},
 	world::{unsafe_world_cell::UnsafeWorldCell, DeferredWorld},
 };
+use bevy_utils::prelude::DebugName;
 
 /// Create a system that appears as a separate fiber in the profiler.
 #[inline(always)]
 pub fn timeline<In: SystemInput, Out, Params, T: IntoSystem<In, Out, Params>>(sys: T) -> SystemWrapper<T::System> {
 	let sys = T::into_system(sys);
 	SystemWrapper {
-		name: CString::new::<Vec<u8>>(match sys.name() {
-			Cow::Borrowed(b) => b.into(),
-			Cow::Owned(o) => o.into(),
-		})
-		.expect("System name must not have null bytes"),
+		name: CString::new(sys.name().as_bytes()).expect("System name must not have null bytes"),
 		inner: sys,
 	}
 }
@@ -39,19 +36,15 @@ where
 	type Out = T::Out;
 
 	#[inline(always)]
-	fn name(&self) -> Cow<'static, str> { self.inner.name() }
-
-	#[inline(always)]
-	fn component_access(&self) -> &Access<ComponentId> { self.inner.component_access() }
-
-	#[inline(always)]
-	fn archetype_component_access(&self) -> &Access<ArchetypeComponentId> { self.inner.archetype_component_access() }
+	fn name(&self) -> DebugName { self.inner.name() }
 
 	#[inline(always)]
 	fn is_send(&self) -> bool { self.inner.is_send() }
 
 	#[inline(always)]
-	unsafe fn run_unsafe(&mut self, input: <Self::In as SystemInput>::Inner<'_>, world: UnsafeWorldCell) -> Self::Out {
+	unsafe fn run_unsafe(
+		&mut self, input: <Self::In as SystemInput>::Inner<'_>, world: UnsafeWorldCell,
+	) -> Result<Self::Out, RunSystemError> {
 		#[cfg(feature = "enable")]
 		sys::___tracy_fiber_enter(self.name.as_ptr());
 		let out = self.inner.run_unsafe(input, world);
@@ -61,20 +54,17 @@ where
 	}
 
 	#[inline(always)]
-	fn run(&mut self, input: <Self::In as SystemInput>::Inner<'_>, world: &mut World) -> Self::Out {
+	fn run(
+		&mut self, input: <Self::In as SystemInput>::Inner<'_>, world: &mut World,
+	) -> Result<Self::Out, RunSystemError> {
 		self.inner.run(input, world)
 	}
 
 	#[inline(always)]
-	fn initialize(&mut self, _world: &mut World) { self.inner.initialize(_world) }
+	fn initialize(&mut self, _world: &mut World) -> FilteredAccessSet { self.inner.initialize(_world) }
 
 	#[inline(always)]
-	fn update_archetype_component_access(&mut self, world: UnsafeWorldCell) {
-		self.inner.update_archetype_component_access(world)
-	}
-
-	#[inline(always)]
-	fn check_change_tick(&mut self, change_tick: Tick) { self.inner.check_change_tick(change_tick) }
+	fn check_change_tick(&mut self, change_tick: CheckChangeTicks) { self.inner.check_change_tick(change_tick) }
 
 	#[inline(always)]
 	fn is_exclusive(&self) -> bool { self.inner.is_exclusive() }
@@ -94,4 +84,6 @@ where
 	unsafe fn validate_param_unsafe(&mut self, world: UnsafeWorldCell) -> Result<(), SystemParamValidationError> {
 		self.inner.validate_param_unsafe(world)
 	}
+
+	fn flags(&self) -> SystemStateFlags { self.inner.flags() }
 }
