@@ -89,6 +89,7 @@ where
 				sys::___tracy_emit_zone_end(sys::___tracy_c_zone_context {
 					id: stack.pop().unwrap(),
 					active: 1,
+					connectionId: 0,
 				})
 			});
 		}

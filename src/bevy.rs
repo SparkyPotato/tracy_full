@@ -69,7 +69,7 @@ where
 	#[inline(always)]
 	fn is_exclusive(&self) -> bool { self.inner.is_exclusive() }
 
-	fn type_id(&self) -> TypeId { self.inner.type_id() }
+	fn system_type(&self) -> TypeId { self.inner.system_type() }
 
 	fn has_deferred(&self) -> bool { self.inner.has_deferred() }
 
@@ -80,10 +80,6 @@ where
 	fn set_last_run(&mut self, last_run: Tick) { self.inner.set_last_run(last_run) }
 
 	fn queue_deferred(&mut self, world: DeferredWorld) { self.inner.queue_deferred(world) }
-
-	unsafe fn validate_param_unsafe(&mut self, world: UnsafeWorldCell) -> Result<(), SystemParamValidationError> {
-		self.inner.validate_param_unsafe(world)
-	}
 
 	fn flags(&self) -> SystemStateFlags { self.inner.flags() }
 }

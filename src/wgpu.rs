@@ -336,7 +336,7 @@ impl ProfileContext {
 		slice.map_async(MapMode::Read, |_| {});
 		let _ = device.poll(PollType::wait_indefinitely());
 
-		let gpu_time = i64::from_le_bytes(slice.get_mapped_range()[0..8].try_into().unwrap());
+		let gpu_time = i64::from_le_bytes(slice.get_mapped_range().unwrap()[0..8].try_into().unwrap());
 		pool.reset();
 		gpu_time
 	}
@@ -381,7 +381,7 @@ impl ProfileContext {
 
 			let slice = pool.readback.slice(..(pool.used_queries as u64 * 8));
 			{
-				let view = slice.get_mapped_range();
+				let view = slice.get_mapped_range().unwrap();
 				for i in 0..pool.used_queries {
 					let query_id = pool.base_query_id + i;
 					let view_base = i as usize * 8;

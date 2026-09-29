@@ -49,7 +49,7 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 		#[cfg(feature = "enable")]
 		{
 			self.inner.allocate(layout).map(|value| unsafe {
-				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), 0, self.name.as_ptr());
+				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), self.name.as_ptr());
 				value
 			})
 		}
@@ -62,7 +62,7 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 		#[cfg(feature = "enable")]
 		{
 			self.inner.allocate_zeroed(layout).map(|value| unsafe {
-				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), 0, self.name.as_ptr());
+				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), self.name.as_ptr());
 				value
 			})
 		}
@@ -73,7 +73,7 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 
 	unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_free_named(ptr.as_ptr() as _, 0, self.name.as_ptr());
+		sys::___tracy_emit_memory_free_named(ptr.as_ptr() as _, self.name.as_ptr());
 		self.inner.deallocate(ptr, layout);
 	}
 
@@ -82,9 +82,9 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 	) -> Result<NonNull<[u8]>, AllocError> {
 		#[cfg(feature = "enable")]
 		{
-			sys::___tracy_emit_memory_free_named(ptr.as_ptr() as _, 0, self.name.as_ptr());
+			sys::___tracy_emit_memory_free_named(ptr.as_ptr() as _, self.name.as_ptr());
 			self.inner.grow(ptr, old_layout, new_layout).map(|value| {
-				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), 0, self.name.as_ptr());
+				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), self.name.as_ptr());
 				value
 			})
 		}
@@ -98,9 +98,9 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 	) -> Result<NonNull<[u8]>, AllocError> {
 		#[cfg(feature = "enable")]
 		{
-			sys::___tracy_emit_memory_free_named(ptr.as_ptr() as _, 0, self.name.as_ptr());
+			sys::___tracy_emit_memory_free_named(ptr.as_ptr() as _, self.name.as_ptr());
 			self.inner.grow_zeroed(ptr, old_layout, new_layout).map(|value| {
-				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), 0, self.name.as_ptr());
+				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), self.name.as_ptr());
 				value
 			})
 		}
@@ -114,9 +114,9 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 	) -> Result<NonNull<[u8]>, AllocError> {
 		#[cfg(feature = "enable")]
 		{
-			sys::___tracy_emit_memory_free_named(ptr.as_ptr() as _, 0, self.name.as_ptr());
+			sys::___tracy_emit_memory_free_named(ptr.as_ptr() as _, self.name.as_ptr());
 			self.inner.shrink(ptr, old_layout, new_layout).map(|value| {
-				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), 0, self.name.as_ptr());
+				sys::___tracy_emit_memory_alloc_named(value.as_ptr() as _, value.len(), self.name.as_ptr());
 				value
 			})
 		}
@@ -161,7 +161,6 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocatorSampled<T> {
 					value.as_ptr() as _,
 					value.len(),
 					self.depth,
-					0,
 					self.name.as_ptr(),
 				);
 				value
@@ -180,7 +179,6 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocatorSampled<T> {
 					value.as_ptr() as _,
 					value.len(),
 					self.depth,
-					0,
 					self.name.as_ptr(),
 				);
 				value
@@ -193,7 +191,7 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocatorSampled<T> {
 
 	unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_free_callstack_named(ptr.as_ptr() as _, self.depth, 0, self.name.as_ptr());
+		sys::___tracy_emit_memory_free_callstack_named(ptr.as_ptr() as _, self.depth, self.name.as_ptr());
 		self.inner.deallocate(ptr, layout);
 	}
 
@@ -202,13 +200,12 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocatorSampled<T> {
 	) -> Result<NonNull<[u8]>, AllocError> {
 		#[cfg(feature = "enable")]
 		{
-			sys::___tracy_emit_memory_free_callstack_named(ptr.as_ptr() as _, self.depth, 0, self.name.as_ptr());
+			sys::___tracy_emit_memory_free_callstack_named(ptr.as_ptr() as _, self.depth, self.name.as_ptr());
 			self.inner.grow(ptr, old_layout, new_layout).map(|value| {
 				sys::___tracy_emit_memory_alloc_callstack_named(
 					value.as_ptr() as _,
 					value.len(),
 					self.depth,
-					0,
 					self.name.as_ptr(),
 				);
 				value
@@ -224,13 +221,12 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocatorSampled<T> {
 	) -> Result<NonNull<[u8]>, AllocError> {
 		#[cfg(feature = "enable")]
 		{
-			sys::___tracy_emit_memory_free_callstack_named(ptr.as_ptr() as _, self.depth, 0, self.name.as_ptr());
+			sys::___tracy_emit_memory_free_callstack_named(ptr.as_ptr() as _, self.depth, self.name.as_ptr());
 			self.inner.grow_zeroed(ptr, old_layout, new_layout).map(|value| {
 				sys::___tracy_emit_memory_alloc_callstack_named(
 					value.as_ptr() as _,
 					value.len(),
 					self.depth,
-					0,
 					self.name.as_ptr(),
 				);
 				value
@@ -246,13 +242,12 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocatorSampled<T> {
 	) -> Result<NonNull<[u8]>, AllocError> {
 		#[cfg(feature = "enable")]
 		{
-			sys::___tracy_emit_memory_free_callstack_named(ptr.as_ptr() as _, self.depth, 0, self.name.as_ptr());
+			sys::___tracy_emit_memory_free_callstack_named(ptr.as_ptr() as _, self.depth, self.name.as_ptr());
 			self.inner.shrink(ptr, old_layout, new_layout).map(|value| {
 				sys::___tracy_emit_memory_alloc_callstack_named(
 					value.as_ptr() as _,
 					value.len(),
 					self.depth,
-					0,
 					self.name.as_ptr(),
 				);
 				value
@@ -289,14 +284,14 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocator<T> {
 	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
 		let value = self.inner.alloc(layout);
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_alloc(value as _, layout.size(), 0);
+		sys::___tracy_emit_memory_alloc(value as _, layout.size());
 		value
 	}
 
 	#[inline(always)]
 	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_free(ptr as _, 0);
+		sys::___tracy_emit_memory_free(ptr as _);
 		self.inner.dealloc(ptr, layout);
 	}
 
@@ -304,17 +299,17 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocator<T> {
 	unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
 		let value = self.inner.alloc_zeroed(layout);
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_alloc(value as _, layout.size(), 0);
+		sys::___tracy_emit_memory_alloc(value as _, layout.size());
 		value
 	}
 
 	#[inline(always)]
 	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_free(ptr as _, 0);
+		sys::___tracy_emit_memory_free(ptr as _);
 		let value = self.inner.realloc(ptr, layout, new_size);
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_alloc(value as _, new_size, 0);
+		sys::___tracy_emit_memory_alloc(value as _, new_size);
 		value
 	}
 }
@@ -347,14 +342,14 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocatorSampled<T> {
 	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
 		let value = self.inner.alloc(layout);
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_alloc_callstack(value as _, layout.size(), self.depth, 0);
+		sys::___tracy_emit_memory_alloc_callstack(value as _, layout.size(), self.depth);
 		value
 	}
 
 	#[inline(always)]
 	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_free_callstack(ptr as _, self.depth, 0);
+		sys::___tracy_emit_memory_free_callstack(ptr as _, self.depth);
 		self.inner.dealloc(ptr, layout);
 	}
 
@@ -362,17 +357,17 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for GlobalAllocatorSampled<T> {
 	unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
 		let value = self.inner.alloc_zeroed(layout);
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_alloc_callstack(value as _, layout.size(), self.depth, 0);
+		sys::___tracy_emit_memory_alloc_callstack(value as _, layout.size(), self.depth);
 		value
 	}
 
 	#[inline(always)]
 	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_free_callstack(ptr as _, self.depth, 0);
+		sys::___tracy_emit_memory_free_callstack(ptr as _, self.depth);
 		let value = self.inner.realloc(ptr, layout, new_size);
 		#[cfg(feature = "enable")]
-		sys::___tracy_emit_memory_alloc_callstack(value as _, new_size, self.depth, 0);
+		sys::___tracy_emit_memory_alloc_callstack(value as _, new_size, self.depth);
 		value
 	}
 }
