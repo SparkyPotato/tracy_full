@@ -3,9 +3,10 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 #![allow(unused_variables)]
-#![cfg_attr(feature = "allocator_api", feature(allocator_api))]
-#![cfg_attr(feature = "unstable", feature(const_type_name))]
-#![cfg_attr(feature = "unstable", feature(generic_const_exprs))]
+#![cfg_attr(
+	feature = "unstable",
+	feature(const_type_name, gca_min_const_items, gca_const_items, generic_const_items)
+)]
 
 use std::{error::Error, ffi::CString};
 

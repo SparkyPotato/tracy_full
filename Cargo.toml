@@ -1,6 +1,6 @@
 [package]
 name = "tracy_full"
-version = "1.14.0"
+version = "1.14.1"
 authors = ["SparkyPotato"]
 license = "MIT"
 edition = "2021"
@@ -21,8 +21,6 @@ default = ["system-tracing", "context-switch-tracing", "sampling", "code-transfe
 
 # Enable nightly-only features and optimizations.
 unstable = []
-# Enable the nightly Allocator API features.
-allocator_api = ["unstable"]
 
 # Bevy support.
 bevy = ["dep:bevy_ecs", "dep:bevy_utils", "bevy_utils/debug", "futures"]

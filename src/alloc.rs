@@ -1,9 +1,7 @@
 //! Allocation profiling.
 
-#[cfg(feature = "allocator_api")]
-use std::alloc::{AllocError, Allocator};
 use std::{
-	alloc::{GlobalAlloc, Layout, System},
+	alloc::{AllocError, Allocator, GlobalAlloc, Layout, System},
 	ffi::CStr,
 	ptr::NonNull,
 };
@@ -11,7 +9,6 @@ use std::{
 use crate::clamp_callstack_depth;
 
 /// Create an allocator that is tracked by tracy.
-#[cfg(feature = "allocator_api")]
 #[macro_export]
 macro_rules! tracked_allocator {
 	($name:literal, $alloc:expr) => {
@@ -24,14 +21,12 @@ macro_rules! tracked_allocator {
 }
 
 /// A wrapper around an allocator that tracy tracks as a memory pool.
-#[cfg(feature = "allocator_api")]
 pub struct TrackedAllocator<'a, T> {
 	inner: T,
 	#[cfg(feature = "enable")]
 	name: &'a CStr,
 }
 
-#[cfg(feature = "allocator_api")]
 impl<'a, T: Allocator> TrackedAllocator<'a, T> {
 	#[inline(always)]
 	pub const fn new(inner: T, name: &'a CStr) -> Self {
@@ -43,7 +38,6 @@ impl<'a, T: Allocator> TrackedAllocator<'a, T> {
 	}
 }
 
-#[cfg(feature = "allocator_api")]
 unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 	fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
 		#[cfg(feature = "enable")]
@@ -128,7 +122,6 @@ unsafe impl<T: Allocator> Allocator for TrackedAllocator<'_, T> {
 
 /// A wrapper around an allocator that tracy tracks as a memory pool, that also samples the callstack on every
 /// allocation.
-#[cfg(feature = "allocator_api")]
 pub struct TrackedAllocatorSampled<T> {
 	inner: T,
 	#[cfg(feature = "enable")]
@@ -137,7 +130,6 @@ pub struct TrackedAllocatorSampled<T> {
 	depth: i32,
 }
 
-#[cfg(feature = "allocator_api")]
 impl<T: Allocator> TrackedAllocatorSampled<T> {
 	#[inline(always)]
 	pub const fn new(inner: T, name: &'static CStr, depth: u32) -> Self {
@@ -151,7 +143,6 @@ impl<T: Allocator> TrackedAllocatorSampled<T> {
 	}
 }
 
-#[cfg(feature = "allocator_api")]
 unsafe impl<T: Allocator> Allocator for TrackedAllocatorSampled<T> {
 	fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
 		#[cfg(feature = "enable")]
