@@ -25,6 +25,8 @@ pub struct TrackedAllocator<'a, T> {
 	inner: T,
 	#[cfg(feature = "enable")]
 	name: &'a CStr,
+	#[cfg(not(feature = "enable"))]
+	name: std::marker::PhantomData<&'a CStr>,
 }
 
 impl<'a, T: Allocator> TrackedAllocator<'a, T> {
@@ -34,6 +36,8 @@ impl<'a, T: Allocator> TrackedAllocator<'a, T> {
 			inner,
 			#[cfg(feature = "enable")]
 			name,
+			#[cfg(not(feature = "enable"))]
+			name: std::marker::PhantomData,
 		}
 	}
 }
